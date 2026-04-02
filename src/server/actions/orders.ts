@@ -69,9 +69,13 @@ export async function processSale(cart: CartItem[]) {
       };
     });
 
-    // 4. Ejecuta la Función de Base de Datos para asegurar Control de Concurrencia (Atomicidad)
+    // 4. Calcular el total del pedido
+    const totalPedido = cart.reduce((acc, item) => acc + (item.precio_unitario * item.cantidad), 0);
+
+    // 5. Ejecuta la Función de Base de Datos para asegurar Control de Concurrencia (Atomicidad)
     const { data, error } = await supabase.rpc('procesar_venta', {
       cart_payload: payload, 
+      p_total_precio: totalPedido,
       p_user_id: user.id
     });
 

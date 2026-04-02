@@ -4,10 +4,11 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 // Utilizamos lucide-react para la iconografía minimalista y nativa
-import { Store, Package, Bell, Pizza } from 'lucide-react';
+import { Store, Package, Bell, Pizza, Receipt } from 'lucide-react';
 
 const NAV_ITEMS = [
   { label: 'Caja POS', href: '/pos', icon: Store },
+  { label: 'Ventas', href: '/ventas', icon: Receipt },
   { label: 'Bodega', href: '/inventario', icon: Package },
   { label: 'Alertas', href: '/alertas', icon: Bell },
 ];

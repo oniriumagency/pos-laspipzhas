@@ -1,0 +1,26 @@
+# Archivos de bloqueo de dependencias (¡El mayor consumidor de tokens!)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Archivos autogenerados de tipado de Next.js
+next-env.d.ts
+
+# Carpeta de recursos estáticos y multimedia (si la llegas a crear dentro de src o en la raíz)
+public/
+src/public/
+
+# Extensiones de archivos multimedia y binarios que la IA no debe intentar leer
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.ico
+*.webp
+*.gif
+*.pdf
+
+# Archivos de base de datos local (por si haces dumps de prueba de Supabase)
+*.sql.gz
+*.sqlite
+*.db
