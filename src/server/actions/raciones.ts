@@ -43,14 +43,20 @@ export async function updateRecetaTopping(ingredienteId: string, tamanoId: strin
 
     if (error) return { error: error.message };
   } else {
-    // Upsert: insertar o actualizar
+    // Reemplazar: primero borrar y luego insertar
+    await supabase
+      .from('recetas_toppings')
+      .delete()
+      .eq('ingrediente_id', ingredienteId)
+      .eq('tamano_id', tamanoId);
+
     const { error } = await supabase
       .from('recetas_toppings')
-      .upsert({
+      .insert({
         ingrediente_id: ingredienteId,
         tamano_id: tamanoId,
         porcion_gr: porcionGr
-      }, { onConflict: 'ingrediente_id,tamano_id' });
+      });
 
     if (error) return { error: error.message };
   }
@@ -72,11 +78,19 @@ export async function saveRacionesBatch(
   const toUpsert = cambios.filter(c => c.porcion_gr > 0);
   const toDelete = cambios.filter(c => c.porcion_gr <= 0);
 
-  // Upsert en batch
+  // Insert / Update en batch (Borrando previos para emular upsert sin constraints)
   if (toUpsert.length > 0) {
+    for (const u of toUpsert) {
+      await supabase
+        .from('recetas_toppings')
+        .delete()
+        .eq('ingrediente_id', u.ingrediente_id)
+        .eq('tamano_id', u.tamano_id);
+    }
+
     const { error } = await supabase
       .from('recetas_toppings')
-      .upsert(toUpsert, { onConflict: 'ingrediente_id,tamano_id' });
+      .insert(toUpsert);
 
     if (error) return { error: error.message };
   }
@@ -143,9 +157,18 @@ export async function addIngredienteToRecetas(ingredienteId: string, tamanoIds: 
     porcion_gr: 0
   }));
 
+  // Emular upsert borrando primero
+  for (const row of rows) {
+    await supabase
+      .from('recetas_toppings')
+      .delete()
+      .eq('ingrediente_id', row.ingrediente_id)
+      .eq('tamano_id', row.tamano_id);
+  }
+
   const { error } = await supabase
     .from('recetas_toppings')
-    .upsert(rows, { onConflict: 'ingrediente_id,tamano_id' });
+    .insert(rows);
 
   if (error) return { error: error.message };
 
