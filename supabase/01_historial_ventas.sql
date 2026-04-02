@@ -177,9 +177,9 @@ BEGIN
             updated_at = NOW()
         WHERE id = v_item.ing_id;
 
-        -- Registrar en el historial como cancelación
+        -- Registrar en el historial como ajuste (reversión de venta cancelada)
         INSERT INTO historial_inventario (ingrediente_id, cantidad_cambio, tipo_movimiento, created_by)
-        VALUES (v_item.ing_id, v_item.cantidad_descontar, 'ingreso', p_user_id);
+        VALUES (v_item.ing_id, v_item.cantidad_descontar, 'ajuste', p_user_id);
     END LOOP;
 
     -- Eliminar la venta de la tabla de ventas

@@ -61,6 +61,10 @@ export async function processSale(cart: CartItem[]) {
 
       return {
         tamano_id: item.tamano_id,
+        tamano_nombre: item.tamano_nombre,
+        sabor_1_nombre: item.sabor_1?.nombre || null,
+        sabor_2_nombre: item.sabor_2?.nombre || null,
+        precio_unitario: item.precio_unitario,
         cantidad: item.cantidad,
         mitad_1: ingMitad1,
         mitad_2: ingMitad2,
@@ -93,6 +97,7 @@ export async function processSale(cart: CartItem[]) {
     // 5. Invalida vistas de stock
     revalidatePath('/inventario');
     revalidatePath('/alertas');
+    revalidatePath('/ventas');
 
     return { success: true };
 
