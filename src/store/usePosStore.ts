@@ -22,6 +22,7 @@ export type CartItem = {
   sabor_2?: Sabor;
   extras: Topping[];
   cantidad: number;
+  descuento_porcentaje?: number;
 };
 
 interface PosState {
@@ -74,7 +75,10 @@ export const usePosStore = create<PosState>((set, get) => ({
 
   getCartTotal: () => {
     const { cart } = get();
-    return cart.reduce((total, item) => total + (item.precio_unitario * item.cantidad), 0);
+    return cart.reduce((total, item) => {
+      const descuentoMultiplier = item.descuento_porcentaje ? (1 - item.descuento_porcentaje / 100) : 1;
+      return total + (item.precio_unitario * descuentoMultiplier * item.cantidad);
+    }, 0);
   },
 
   getCartItemCount: () => {

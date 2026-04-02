@@ -157,11 +157,23 @@ export default function VentasList({ ventas, ingredientes }: VentasListProps) {
                                 <span className="text-xs text-gray-500 font-medium mt-0.5 block truncate">🍕 {saborLabel}</span>
                               )}
                            </div>
-                           {precioUnit && (
-                             <span className="text-sm font-black text-gray-600 shrink-0">
-                               ${(precioUnit * item.cantidad).toLocaleString('es-ES')}
-                             </span>
-                           )}
+                           <div className="flex flex-col items-end shrink-0">
+                             {item.descuento_porcentaje ? (
+                               <>
+                                 <span className="line-through text-[0.65rem] text-gray-400 font-semibold mb-0.5">${(precioUnit * item.cantidad).toLocaleString('es-ES')}</span>
+                                 <div className="flex items-center gap-1.5">
+                                   <span className="bg-orange-100 text-orange-600 text-[0.6rem] font-bold px-1 rounded">- {item.descuento_porcentaje}%</span>
+                                   <span className="text-sm font-black text-gray-800">${((precioUnit * (1 - item.descuento_porcentaje/100)) * item.cantidad).toLocaleString('es-ES')}</span>
+                                 </div>
+                               </>
+                             ) : (
+                               precioUnit && (
+                                 <span className="text-sm font-black text-gray-800">
+                                   ${(precioUnit * item.cantidad).toLocaleString('es-ES')}
+                                 </span>
+                               )
+                             )}
+                           </div>
                          </li>
                        );
                      })}

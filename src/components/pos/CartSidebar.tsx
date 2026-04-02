@@ -127,26 +127,38 @@ export function CartSidebar() {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center mt-1">
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-1 border border-slate-100">
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.cantidad - 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-slate-600 hover:text-orange-500 hover:bg-orange-50 shadow-sm transition-colors"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="font-bold w-4 text-center text-slate-700">{item.cantidad}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.cantidad + 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-slate-600 hover:text-orange-500 hover:bg-orange-50 shadow-sm transition-colors"
-                      >
-                        <Plus size={14} />
-                      </button>
+                    <div className="flex justify-between items-center mt-1">
+                      <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-1 border border-slate-100 shadow-sm shrink-0">
+                        <button 
+                          onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-slate-600 hover:text-orange-500 hover:bg-orange-50 shadow-sm transition-colors focus:outline-none"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="font-bold w-4 text-center text-slate-700">{item.cantidad}</span>
+                        <button 
+                          onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-slate-600 hover:text-orange-500 hover:bg-orange-50 shadow-sm transition-colors focus:outline-none"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        {item.descuento_porcentaje ? (
+                          <>
+                            <span className="line-through text-[0.65rem] text-slate-400 font-semibold leading-none mb-1">${(item.precio_unitario * item.cantidad).toLocaleString()}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded uppercase leading-none">- {item.descuento_porcentaje}%</span>
+                              <span className="font-black text-slate-800 text-lg leading-none">${((item.precio_unitario * (1 - item.descuento_porcentaje / 100)) * item.cantidad).toLocaleString()}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="font-black text-slate-800 text-lg">
+                            ${(item.precio_unitario * item.cantidad).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="font-black text-slate-800 text-lg">
-                      ${(item.precio_unitario * item.cantidad).toLocaleString()}
-                    </div>
-                  </div>
                 </div>
               ))
             )}
