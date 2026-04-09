@@ -23,7 +23,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const [extras, setExtras] = useState<Topping[]>([]);
   const [activeTab, setActiveTab] = useState<'m1' | 'm2' | 'extras'>('m1');
   const [cantidad, setCantidad] = useState(1);
-  const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
+
 
   // Determinar precio base según tamaño y sabor
   const getFlavorPrice = (saborNombre: string, tamanoNombre: string) => {
@@ -63,7 +63,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const basePrice = getBasePrice();
   const extrasPrice = extras.length * 3000;
   const currentTotal = basePrice + extrasPrice;
-  const totalWithMutiplier = (currentTotal * (1 - descuentoPorcentaje / 100)) * cantidad;
+  const totalWithMultiplier = currentTotal * cantidad;
 
   // Reset state on open
   useEffect(() => {
@@ -75,7 +75,6 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
       setExtras([]);
       setActiveTab('m1');
       setCantidad(1);
-      setDescuentoPorcentaje(0);
     }
   }, [isOpen]);
 
@@ -112,7 +111,6 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
       sabor_2: esMitades ? saborMitad2! : undefined,
       extras: extras,
       cantidad: Math.max(1, cantidad),
-      descuento_porcentaje: descuentoPorcentaje > 0 ? descuentoPorcentaje : undefined
     });
     
     toast.success(`${cantidad}x Pizza ${tamano.nombre} agregada al carrito`);
@@ -265,22 +263,13 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
           )}
         </div>
 
-        {/* Adicionales (Cantidad y Descuento) */}
-        <div className="px-5 py-4 bg-white border-t border-slate-100 flex gap-4">
-          <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12">
-               <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none focus:bg-slate-200">-</button>
-               <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
-               <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none focus:bg-slate-200">+</button>
-            </div>
-          </div>
-          <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Desc. (%)</label>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 px-3 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 transition-all">
-               <input type="number" min="0" max="100" value={descuentoPorcentaje} onChange={(e) => setDescuentoPorcentaje(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))} className="w-full h-full text-center bg-transparent font-bold text-orange-600 outline-none" />
-               <span className="text-slate-400 font-bold ml-1">%</span>
-            </div>
+        {/* Selector de Cantidad */}
+        <div className="px-5 py-4 bg-white border-t border-slate-100">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 max-w-[180px]">
+             <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">-</button>
+             <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
+             <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">+</button>
           </div>
         </div>
 
@@ -291,10 +280,9 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
             className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-2xl shadow-xl shadow-slate-900/10 hover:-translate-y-0.5 transition-all flex justify-between items-center px-6 focus:outline-none"
           >
             <span>Agregar a la Orden</span>
-            <div className="flex items-center gap-2">
-              {descuentoPorcentaje > 0 && <span className="line-through opacity-50 text-xs mr-2">${(currentTotal * cantidad).toLocaleString()}</span>}
-              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm tracking-wide">${totalWithMutiplier.toLocaleString()}</span>
-            </div>
+            <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm tracking-wide font-black">
+              ${totalWithMultiplier.toLocaleString()}
+            </span>
           </button>
         </div>
       </div>

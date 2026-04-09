@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 
 export type Topping = {
@@ -12,6 +14,8 @@ export type Sabor = {
   categoria: string;
 };
 
+export type OrigenVenta = 'local' | 'delivery' | 'whatsapp' | 'telefono';
+
 export type CartItem = {
   id: string; // ID local único del frontend (para iterar listas y borrar items)
   tamano_id: string;
@@ -22,10 +26,10 @@ export type CartItem = {
   sabor_2?: Sabor;
   extras: Topping[];
   cantidad: number;
-  descuento_porcentaje?: number;
 };
 
 interface PosState {
+  // Carrito
   cart: CartItem[];
   isCartOpen: boolean;
   setCartOpen: (open: boolean) => void;
@@ -33,56 +37,83 @@ interface PosState {
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, cantidad: number) => void;
   clearCart: () => void;
-  // Derivados / Selectores
-  getCartTotal: () => number;
+
+  // Configuración de la venta (persiste entre items)
+  origenVenta: OrigenVenta;
+  setOrigenVenta: (origen: OrigenVenta) => void;
+
+  // Descuento Global (% sobre el total de la orden)
+  descuentoGlobal: number; // 0–100
+  setDescuentoGlobal: (pct: number) => void;
+
+  // Selectores derivados
+  getSubtotal: () => number;
+  getDescuentoAmount: () => number;
+  getTotal: () => number;
   getCartItemCount: () => number;
 }
 
 export const usePosStore = create<PosState>((set, get) => ({
   cart: [],
   isCartOpen: false,
+  origenVenta: 'local',
+  descuentoGlobal: 0,
 
   setCartOpen: (open) => set({ isCartOpen: open }),
+  setOrigenVenta: (origen) => set({ origenVenta: origen }),
+  setDescuentoGlobal: (pct) => set({ descuentoGlobal: Math.min(100, Math.max(0, pct)) }),
 
   addToCart: (item) => {
-    // Generación de ID compatible nativamente
-    const id = typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).substring(7);
-    
+    const id =
+      typeof crypto !== 'undefined'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(7);
     set((state) => ({
-      cart: [...state.cart, { ...item, id }]
+      cart: [...state.cart, { ...item, id }],
     }));
   },
 
   removeFromCart: (itemId) => {
     set((state) => ({
-      cart: state.cart.filter((item) => item.id !== itemId)
+      cart: state.cart.filter((item) => item.id !== itemId),
     }));
   },
 
   updateQuantity: (itemId, cantidad) => {
     set((state) => ({
-      cart: state.cart.map((item) => 
-        item.id === itemId 
-          ? { ...item, cantidad: Math.max(1, cantidad) } // Prevenir bajar de 1
+      cart: state.cart.map((item) =>
+        item.id === itemId
+          ? { ...item, cantidad: Math.max(1, cantidad) }
           : item
-      )
+      ),
     }));
   },
 
   clearCart: () => {
-    set({ cart: [] });
+    set({ cart: [], descuentoGlobal: 0 });
   },
 
-  getCartTotal: () => {
+  getSubtotal: () => {
     const { cart } = get();
-    return cart.reduce((total, item) => {
-      const descuentoMultiplier = item.descuento_porcentaje ? (1 - item.descuento_porcentaje / 100) : 1;
-      return total + (item.precio_unitario * descuentoMultiplier * item.cantidad);
-    }, 0);
+    return cart.reduce(
+      (total, item) => total + item.precio_unitario * item.cantidad,
+      0
+    );
   },
 
+  getDescuentoAmount: () => {
+    const { getSubtotal, descuentoGlobal } = get();
+    return getSubtotal() * (descuentoGlobal / 100);
+  },
+
+  getTotal: () => {
+    const { getSubtotal, getDescuentoAmount } = get();
+    return getSubtotal() - getDescuentoAmount();
+  },
+
+  // Alias de compatibilidad que algunos componentes todavía pueden usar
   getCartItemCount: () => {
     const { cart } = get();
     return cart.reduce((count, item) => count + item.cantidad, 0);
-  }
+  },
 }));

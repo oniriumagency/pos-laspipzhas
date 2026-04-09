@@ -1,9 +1,11 @@
 import React from 'react';
 import NavigationShell from '../../components/layout/NavigationShell';
+import { MasterFAB } from '../../components/layout/MasterFAB';
 
 /**
  * El Group Layout del Dashboard envuelve a todas las rutas protegidas (/pos, /inventario, /alertas).
- * Delega la provisión de la navegación al NavigationShell sin tener que inyectarla en cada página por separado.
+ * Delega la provisión de la navegación al NavigationShell sin tener que inyectarla en cada página.
+ * Monta el MasterFAB (Floating Action Button) global disponible en toda la app.
  */
 export default function DashboardLayout({
   children,
@@ -24,7 +26,7 @@ export default function DashboardLayout({
         HACK RESPONSIVO CRÍTICO:
         ========================================================================
         El "main" envuelve a {children}.
-        - En Móvil (default): Dejamos el espacio vertical (`pb-20` o `pb-24`) en la parte inferior 
+        - En Móvil (default): Dejamos el espacio vertical (`pb-20`) en la parte inferior 
           para que las grillas/tablas de la caja nunca queden escondidas detrás del Bottom Tab Bar (fixed).
         - En Desktop (`md:`): La barra inferior desaparece, así que matamos el `pb-0`. Sin embargo, 
           insertamos un "Padding Izquierdo" (`md:pl-64` = 256px) para acorralar físicamente 
@@ -33,6 +35,12 @@ export default function DashboardLayout({
       <main className="pb-24 md:pb-0 md:pl-64 transition-all duration-300 ease-in-out relative overflow-hidden h-full">
         {children}
       </main>
+
+      {/* 
+        Master FAB — flotante sobre todo el dashboard.
+        Es un Client Component montado en el Server Component del layout.
+      */}
+      <MasterFAB />
       
     </div>
   );
