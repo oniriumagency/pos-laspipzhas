@@ -1,6 +1,8 @@
 import React from 'react';
 import NavigationShell from '../../components/layout/NavigationShell';
 import { MasterFAB } from '../../components/layout/MasterFAB';
+import { MobileCartHandle } from '../../components/layout/MobileCartHandle';
+import { CartSidebar } from '../../components/pos/CartSidebar';
 
 /**
  * El Group Layout del Dashboard envuelve a todas las rutas protegidas (/pos, /inventario, /alertas).
@@ -41,6 +43,12 @@ export default function DashboardLayout({
         Es un Client Component montado en el Server Component del layout.
       */}
       <MasterFAB />
+      
+      {/* 
+        Gesto mobile para abrir el carrito de forma global y su Sidebar 
+      */}
+      <MobileCartHandle />
+      <CartSidebar />
       
     </div>
   );

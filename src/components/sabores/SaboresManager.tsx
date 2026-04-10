@@ -69,6 +69,7 @@ export default function SaboresManager({ sabores, relaciones, ingredientes }: Sa
     );
     return ingredientes
       .filter(i => !yaVinculados.has(i.id))
+      .filter(i => !i.nombre.toLowerCase().includes('caja'))
       .filter(i =>
         busquedaIngrediente.trim() === '' ||
         i.nombre.toLowerCase().includes(busquedaIngrediente.toLowerCase())
@@ -185,8 +186,21 @@ export default function SaboresManager({ sabores, relaciones, ingredientes }: Sa
                   </button>
                 </div>
 
-                {/* Pills de Ingredientes */}
+                {/* Base Obligatoria */}
+                <div className="px-5 pb-2">
+                  <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Base Obligatoria</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Masa (Bollo crudo)', 'Salsa de Tomate', 'Queso Mozzarella', 'Servilletas'].map((base) => (
+                      <span key={base} className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full px-3 py-1 text-xs font-semibold cursor-default">
+                        {base}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pills de Ingredientes Específicos */}
                 <div className="px-5 pb-4 flex-1">
+                  <p className="text-xs font-bold text-slate-400 mb-2 mt-2 uppercase tracking-wide">Ingredientes Específicos</p>
                   <div className="flex flex-wrap gap-2">
                     {ingredientesDelSabor.length === 0 ? (
                       <span className="text-xs text-slate-300 italic py-1">Sin ingredientes vinculados</span>

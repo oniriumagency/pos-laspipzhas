@@ -9,6 +9,7 @@ interface Venta {
   id: string;
   created_at: string;
   total_precio: number;
+  origen_venta: string;
   cart_payload: any[];
   deducciones: { ing_id: string; cantidad_descontar: number }[];
 }
@@ -50,6 +51,48 @@ export default function VentasList({ ventas, ingredientes }: VentasListProps) {
     });
   };
 
+  const [filtrosOrigen, setFiltrosOrigen] = useState<string[]>(['Propio', 'Rappi', 'DiDi']);
+
+  const toggleFiltro = (origen: string) => {
+    setFiltrosOrigen(prev => 
+      prev.includes(origen) 
+        ? prev.filter(o => o !== origen)
+        : [...prev, origen]
+    );
+  };
+
+  const buildsResumen = (cart_payload: any[]) => {
+    let totalPizzas = 0;
+    const detalles: string[] = [];
+    cart_payload.forEach(item => {
+      const cant = item.cantidad || 1;
+      totalPizzas += cant;
+      const s1 = item.sabor_1_nombre;
+      const s2 = item.sabor_2_nombre;
+      let flavor = s1 || 'Pizza';
+      if (s1 && s2) {
+        // Reducimos el nombre a unas letras si es muy largo, o lo dejamos abreviado pero limpio
+        flavor = `${s1.split(' ')[0]}/${s2.split(' ')[0]}`;
+      } else if (s1) {
+        flavor = s1.split(' ')[0]; // Ej: Hawaiana
+      }
+      detalles.push(`${cant} ${flavor}`);
+    });
+    return `${totalPizzas} Pizza${totalPizzas !== 1 ? 's' : ''} (${detalles.join(', ')})`;
+  };
+
+  const getBadge = (origen: string) => {
+    switch (origen) {
+      case 'Rappi':
+        return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFE5D9] text-[#FF5A00] uppercase tracking-widest border border-[#FFBA99]">Rappi</span>;
+      case 'DiDi':
+        return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 uppercase tracking-widest border border-orange-200">DiDi</span>;
+      case 'Propio':
+      default:
+        return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase tracking-widest border border-slate-200">Propio</span>;
+    }
+  };
+
   if (ventas.length === 0) {
     return (
       <div className="mt-12 bg-white border border-gray-100 rounded-[2rem] p-12 flex flex-col items-center justify-center text-center shadow-sm">
@@ -62,9 +105,39 @@ export default function VentasList({ ventas, ingredientes }: VentasListProps) {
     );
   }
 
+  const ventasFiltradas = ventas.filter(v => filtrosOrigen.length === 0 || filtrosOrigen.includes(v.origen_venta));
+
   return (
     <div className="space-y-4">
-      {ventas.map((venta) => {
+      {/* ── MULTIFILTRO DE ORIGEN ── */}
+      <div className="flex items-center gap-3 mb-6 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 w-fit">
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2">Origen:</span>
+        {['Propio', 'Rappi', 'DiDi'].map(origen => {
+          const isSelected = filtrosOrigen.includes(origen);
+          return (
+            <button
+              key={origen}
+              onClick={() => toggleFiltro(origen)}
+              className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all duration-200 border ${
+                isSelected
+                  ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm'
+                  : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
+              }`}
+            >
+              {origen}
+            </button>
+          );
+        })}
+      </div>
+
+      {ventasFiltradas.length === 0 && (
+        <div className="text-center py-10 bg-white border border-dashed border-gray-200 rounded-[1.5rem]">
+          <p className="text-gray-500 font-bold">No hay ventas que coincidan con los filtros.</p>
+        </div>
+      )}
+
+      {/* ── LISTA DE VENTAS ── */}
+      {ventasFiltradas.map((venta) => {
         const date = new Date(venta.created_at);
         const formatOptions: Intl.DateTimeFormatOptions = { 
           day: '2-digit', month: 'short', year: 'numeric',
@@ -75,8 +148,8 @@ export default function VentasList({ ventas, ingredientes }: VentasListProps) {
         const isExpanded = expandedId === venta.id;
         const isDeleting = deletingId === venta.id;
 
-        // Contar pizzas totales en la orden
-        const totalPizzas = venta.cart_payload.reduce((acc: number, item: any) => acc + (item.cantidad || 1), 0);
+        // Resumen Inteligente
+        const resumen = buildsResumen(venta.cart_payload);
 
         return (
           <div key={venta.id} className={`bg-white border rounded-[1.5rem] shadow-sm overflow-hidden transition-all hover:shadow-md ${isDeleting ? 'opacity-50 border-red-200' : 'border-gray-100'}`}>
@@ -90,13 +163,14 @@ export default function VentasList({ ventas, ingredientes }: VentasListProps) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5 mb-1 flex-wrap">
                     <span className="font-black text-xl text-gray-900">${venta.total_precio.toLocaleString('es-ES')}</span>
+                    {getBadge(venta.origen_venta)}
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700 uppercase tracking-widest">Pagado</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
                     <Clock className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">{prettyDate}</span>
                     <span className="text-gray-300">•</span>
-                    <span className="shrink-0">{totalPizzas} {totalPizzas === 1 ? 'pizza' : 'pizzas'}</span>
+                    <span className="shrink-0 truncate" title={resumen}>{resumen}</span>
                   </div>
                 </div>
               </div>

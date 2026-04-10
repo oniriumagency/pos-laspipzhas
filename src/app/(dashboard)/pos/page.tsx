@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { MenuDisplay } from '@/components/pos/MenuDisplay';
-import { CartSidebar } from '@/components/pos/CartSidebar';
 import { CartToggle } from '@/components/pos/CartToggle';
 import { Topping, Sabor } from '@/store/usePosStore';
 
@@ -52,9 +51,6 @@ export default async function POSPage() {
           <MenuDisplay tamanos={tamanos || []} toppings={toppings} sabores={saboresList} />
         </div>
       </main>
-
-      {/* Sidebar del Carrito - Fija a la derecha en Desktop, Modal/Flotante en Mobile */}
-      <CartSidebar />
     </div>
   );
 }
