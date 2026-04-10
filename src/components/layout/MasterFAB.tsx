@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, useMotionValue, useAnimation, PanInfo } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,6 +13,7 @@ import {
   Settings,
   X,
   Pizza,
+  ChefHat,
 } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { SettingsModal } from './SettingsModal';
@@ -20,119 +21,71 @@ import { SettingsModal } from './SettingsModal';
 // ─── Rutas del menú interno del FAB ─────────────────────────────────────────
 const NAV_ITEMS = [
   { label: 'Caja POS',  href: '/pos',        icon: Store          },
+  { label: 'Recetas',   href: '/sabores',     icon: ChefHat        },
+  { label: 'Gramajes',  href: '/raciones',    icon: UtensilsCrossed },
   { label: 'Bodega',    href: '/inventario',  icon: Package        },
-  { label: 'Recetas',   href: '/raciones',    icon: UtensilsCrossed },
   { label: 'Alertas',   href: '/alertas',     icon: Bell           },
   { label: 'Historial', href: '/ventas',      icon: Receipt        },
 ];
 
-// ─── Constantes de posicionamiento ──────────────────────────────────────────
-const FAB_SIZE   = 56;   // px — lado del botón circular
-const SNAP_MARGIN = 16;  // px — distancia mínima desde el borde de pantalla
-
+/**
+ * MasterFAB — Botón de navegación flotante para móvil.
+ *
+ * ARQUITECTURA:
+ * - Se renderiza vía createPortal directamente al document.body
+ *   para evitar cualquier overflow:hidden de contenedores padre.
+ * - Usa un patrón isMounted para evitar Hydration Mismatch (SSR vs Client).
+ * - Posición fija simple: bottom-6 right-6 con z-[9999].
+ * - Solo visible en móvil (md:hidden aplicado al contenedor del portal).
+ */
 export function MasterFAB() {
-  const pathname     = usePathname();
-  const [isOpen,     setIsOpen]     = useState(false);
+  const pathname = usePathname();
+  const [isMounted, setIsMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isSettings, setIsSettings] = useState(false);
 
   const { getCartItemCount } = usePosStore();
   const itemCount = getCartItemCount();
 
-  const [mounted, setMounted] = useState(false);
-
-  // ── Framer Motion state ──────────────────────────────────────────────────
-  const x       = useMotionValue(0);
-  const y       = useMotionValue(0);
-  const controls = useAnimation();
-  const fabRef  = useRef<HTMLDivElement>(null);
-
-  // Posición inicial: esquina inferior derecha sobre el bottom tab bar
+  // Evitar Hydration Mismatch: solo renderizar en el cliente
   useEffect(() => {
-    const setInitialPosition = () => {
-      const vw    = window.innerWidth;
-      const vh    = window.innerHeight;
-      const initX = vw  - FAB_SIZE - SNAP_MARGIN;
-      const initY = vh  - FAB_SIZE - SNAP_MARGIN - 80; // 80px encima del bottom tab bar
-      x.set(initX);
-      y.set(initY);
-      setMounted(true);
-    };
-    setInitialPosition();
-    window.addEventListener('resize', setInitialPosition);
-    return () => window.removeEventListener('resize', setInitialPosition);
-  }, [x, y]);
+    setIsMounted(true);
+  }, []);
 
-  // ── Lógica de snap al borde más cercano ─────────────────────────────────
-  const handleDragEnd = useCallback(
-    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      const vw  = window.innerWidth;
-      const vh  = window.innerHeight;
-      const cx  = x.get() + FAB_SIZE / 2;   // centro X actual
-      const cy  = y.get() + FAB_SIZE / 2;   // centro Y actual
-
-      // Snapping horizontal: izquierdo o derecho
-      const snapX =
-        cx < vw / 2
-          ? SNAP_MARGIN                           // borde izquierdo
-          : vw - FAB_SIZE - SNAP_MARGIN;          // borde derecho
-
-      // Mantener dentro de los límites verticales
-      const clampedY = Math.min(
-        Math.max(SNAP_MARGIN, cy - FAB_SIZE / 2),
-        vh - FAB_SIZE - SNAP_MARGIN - 80
-      );
-
-      controls.start({
-        x: snapX,
-        y: clampedY,
-        transition: { type: 'spring', stiffness: 400, damping: 35 },
-      });
-    },
-    [x, y, controls]
-  );
-
-  // ── Cierre del menú al navegar ───────────────────────────────────────────
+  // Cierre del menú al navegar
   useEffect(() => { setIsOpen(false); }, [pathname]);
 
-  // ── Items de navegación con estado activo ────────────────────────────────
+  // Items de navegación con estado activo
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,
     isActive: pathname?.startsWith(item.href) ?? false,
   }));
 
-  return (
+  // No renderizar en SSR ni antes del montaje del cliente
+  if (!isMounted) return null;
+
+  const contenidoFab = (
     <>
-      {/* ─────────────────────────────────────────────────────────────────────
-          SOLO VISIBLE EN MÓVIL — el sidebar de escritorio cubre la navegación
-          ───────────────────────────────────────────────────────────────────── */}
+      {/* ────────────────────────────────────────────────────────
+          SOLO VISIBLE EN MÓVIL — el sidebar de escritorio
+          cubre la navegación en pantallas grandes (md+).
+          ──────────────────────────────────────────────────────── */}
       <div className="md:hidden">
 
-        {(!mounted) ? null : (
-          <>
-            {/* Backdrop al abrir el menú */}
-            {isOpen && (
-              <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm"
+        {/* Backdrop al abrir el menú */}
+        {isOpen && (
+          <div
+            className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm"
+            style={{ animation: 'fadeIn 150ms ease-out' }}
             onClick={() => setIsOpen(false)}
           />
         )}
 
         {/* ── Menú radial (aparece encima del FAB cuando isOpen) ── */}
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 20 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="fixed z-[160]"
-            style={{
-              left: x,
-              top: y,
-              transform: 'translateY(calc(-100% - 8px))',
-            }}
+          <div
+            className="fixed bottom-24 right-6 z-[9999]"
+            style={{ animation: 'slideUp 200ms cubic-bezier(0.16, 1, 0.3, 1)' }}
           >
             <div
               className="bg-white rounded-[1.5rem] shadow-2xl border border-gray-100 overflow-hidden"
@@ -179,55 +132,43 @@ export function MasterFAB() {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {/* ── FAB principal — Draggable ── */}
-        <motion.div
-          ref={fabRef}
-          drag
-          dragMomentum={false}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd}
-          animate={controls}
-          style={{ x, y, position: 'fixed', top: 0, left: 0, zIndex: 155, touchAction: 'none' }}
-          whileDrag={{ scale: 1.1, zIndex: 170 }}
+        {/* ── FAB principal — Posición fija simple ── */}
+        <button
+          id="master-fab-btn"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={`
+            fixed bottom-6 right-6 z-[9999]
+            w-14 h-14 rounded-full shadow-2xl flex items-center justify-center
+            transition-all duration-200 focus:outline-none select-none
+            active:scale-95
+            ${isOpen
+              ? 'bg-gray-900 text-white rotate-0'
+              : 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'}
+          `}
+          style={{ boxShadow: '0 8px 32px rgba(234,88,12,0.35)' }}
+          aria-label={isOpen ? 'Cerrar menú' : 'Abrir navegación'}
+          aria-expanded={isOpen}
         >
-          <motion.button
-            id="master-fab-btn"
-            onTap={() => setIsOpen((prev) => !prev)}
-            whileTap={{ scale: 0.93 }}
-            className={`
-              w-14 h-14 rounded-full shadow-2xl flex items-center justify-center
-              transition-colors duration-200 focus:outline-none select-none
-              ${isOpen
-                ? 'bg-gray-900 text-white'
-                : 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'}
-            `}
-            style={{ boxShadow: '0 8px 32px rgba(234,88,12,0.35)' }}
-            aria-label={isOpen ? 'Cerrar menú' : 'Abrir navegación'}
-            aria-expanded={isOpen}
-          >
-            {isOpen ? (
-              <X size={22} strokeWidth={2.5} />
-            ) : (
-              <>
-                <Pizza size={24} className="drop-shadow-sm" />
-                {/* Badge de carrito */}
-                {itemCount > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-white text-orange-600 text-[10px] font-black rounded-full flex items-center justify-center border border-orange-100 shadow-sm"
-                    aria-label={`${itemCount} artículos en el carrito`}
-                  >
-                    {itemCount > 9 ? '9+' : itemCount}
-                  </span>
-                )}
-              </>
-            )}
-          </motion.button>
-        </motion.div>
-        
-        </>}
+          {isOpen ? (
+            <X size={22} strokeWidth={2.5} />
+          ) : (
+            <>
+              <Pizza size={24} className="drop-shadow-sm" />
+              {/* Badge de carrito */}
+              {itemCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-white text-orange-600 text-[10px] font-black rounded-full flex items-center justify-center border border-orange-100 shadow-sm"
+                  aria-label={`${itemCount} artículos en el carrito`}
+                >
+                  {itemCount > 9 ? '9+' : itemCount}
+                </span>
+              )}
+            </>
+          )}
+        </button>
 
       </div>
 
@@ -236,6 +177,22 @@ export function MasterFAB() {
         isOpen={isSettings}
         onClose={() => setIsSettings(false)}
       />
+
+      {/* Animaciones CSS inyectadas */}
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(16px) scale(0.95); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </>
   );
+
+  // Renderizar vía Portal directamente al body del documento
+  // para evitar cualquier contenedor padre con overflow:hidden
+  return createPortal(contenidoFab, document.body);
 }

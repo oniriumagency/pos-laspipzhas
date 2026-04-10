@@ -7,10 +7,12 @@ import { InventoryManager } from '@/components/inventory/InventoryManager'; // I
 export default async function InventarioPage() {
   const supabase = await createClient();
 
-  // 1. Obtener los ingredientes garantizados del lado del servidor.
+  // 1. Obtener los ingredientes activos garantizados del lado del servidor.
+  // Solo se muestran ingredientes con activo = true (Soft Delete)
   const { data: ingredientes, error } = await supabase
     .from('ingredientes')
     .select('id, nombre, stock_actual, unidad_medida, punto_reorden')
+    .eq('activo', true)
     .order('nombre', { ascending: true });
 
   if (error) {

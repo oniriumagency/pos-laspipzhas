@@ -1,8 +1,26 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { adjustInventoryStock, createIngredient } from '@/server/actions/inventory';
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, PackageSearch, Settings2, PlusCircle } from 'lucide-react';
+import {
+  adjustInventoryStock,
+  createIngredient,
+  verificarDependenciasIngrediente,
+  desactivarIngrediente,
+  actualizarUmbralesBatch,
+} from '@/server/actions/inventory';
+import {
+  AlertCircle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  PackageSearch,
+  Settings2,
+  PlusCircle,
+  Trash2,
+  Pencil,
+  Save,
+  X,
+  AlertTriangle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type Ingrediente = {
@@ -26,8 +44,18 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
   const [newUnidad, setNewUnidad] = useState('pz');
   const [newReorden, setNewReorden] = useState('10');
 
+  // ─── Estado para Modo Edición Inline de Umbrales ───────────────────────
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [umbralesEditados, setUmbralesEditados] = useState<Record<string, number>>({});
+
+  // ─── Estado para Soft Delete con Modal de Dependencias ─────────────────
+  const [deleteTarget, setDeleteTarget] = useState<Ingrediente | null>(null);
+  const [dependencias, setDependencias] = useState<{ cantidad: number; nombres: string[] }>({ cantidad: 0, nombres: [] });
+  const [cargandoDependencias, setCargandoDependencias] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
+  // ─── Handlers de Ajuste de Stock ───────────────────────────────────────
   const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
@@ -58,6 +86,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     });
   };
 
+  // ─── Handler de Creación de Insumo ─────────────────────────────────────
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -90,9 +119,120 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     });
   };
 
+  // ─── Handlers de Modo Edición Inline ───────────────────────────────────
+  const activarModoEdicion = () => {
+    // Inicializar los umbrales con los valores actuales
+    const umbralesIniciales: Record<string, number> = {};
+    ingredientes.forEach(ing => {
+      umbralesIniciales[ing.id] = ing.punto_reorden;
+    });
+    setUmbralesEditados(umbralesIniciales);
+    setModoEdicion(true);
+  };
+
+  const cancelarModoEdicion = () => {
+    setModoEdicion(false);
+    setUmbralesEditados({});
+  };
+
+  const guardarUmbrales = () => {
+    // Filtrar solo los que realmente cambiaron
+    const cambiosReales = ingredientes
+      .filter(ing => umbralesEditados[ing.id] !== ing.punto_reorden)
+      .map(ing => ({ id: ing.id, punto_reorden: umbralesEditados[ing.id] }));
+
+    if (cambiosReales.length === 0) {
+      toast.info('No hay cambios para guardar.');
+      cancelarModoEdicion();
+      return;
+    }
+
+    startTransition(async () => {
+      const resultado = await actualizarUmbralesBatch(cambiosReales);
+      if (resultado.error) {
+        toast.error(resultado.error);
+      } else {
+        toast.success(`${cambiosReales.length} umbral(es) actualizado(s) correctamente.`);
+        cancelarModoEdicion();
+      }
+    });
+  };
+
+  // ─── Handlers de Soft Delete ───────────────────────────────────────────
+
+  /**
+   * Paso 1 del borrado: verificar dependencias antes de mostrar el modal.
+   * Si el insumo está vinculado a sabores, se muestra un warning detallado.
+   */
+  const iniciarEliminacion = async (ingrediente: Ingrediente) => {
+    setCargandoDependencias(true);
+    setDeleteTarget(ingrediente);
+
+    const resultado = await verificarDependenciasIngrediente(ingrediente.id);
+
+    if (resultado.error) {
+      toast.error(resultado.error);
+      setDeleteTarget(null);
+      setCargandoDependencias(false);
+      return;
+    }
+
+    setDependencias({
+      cantidad: resultado.cantidadDependencias ?? 0,
+      nombres: resultado.saboresVinculados ?? [],
+    });
+    setCargandoDependencias(false);
+  };
+
+  /**
+   * Paso 2 del borrado: el usuario confirma y se ejecuta el Soft Delete.
+   * Desvincula de sabores y recetas, luego marca activo = false.
+   */
+  const confirmarEliminacion = () => {
+    if (!deleteTarget) return;
+
+    startTransition(async () => {
+      const resultado = await desactivarIngrediente(deleteTarget.id);
+      if (resultado.error) {
+        toast.error(resultado.error);
+      } else {
+        toast.success(`"${deleteTarget.nombre}" desactivado de la bodega.`);
+      }
+      setDeleteTarget(null);
+      setDependencias({ cantidad: 0, nombres: [] });
+    });
+  };
+
   return (
     <div className="mt-8 relative">
-      <div className="flex justify-end mb-6 absolute -top-20 right-0 sm:-top-24">
+      {/* ═══ Barra Superior de Acciones ═══ */}
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-3 absolute -top-20 right-0 left-0 sm:-top-24">
+        <div className="flex gap-2">
+          {!modoEdicion ? (
+            <button
+              onClick={activarModoEdicion}
+              className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
+            >
+              <Pencil size={16} /> Modo Edición
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={guardarUmbrales}
+                disabled={isPending}
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-500 transition-all hover:-translate-y-0.5 disabled:opacity-50"
+              >
+                <Save size={16} /> {isPending ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+              <button
+                onClick={cancelarModoEdicion}
+                className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all"
+              >
+                <X size={16} /> Cancelar
+              </button>
+            </>
+          )}
+        </div>
         <button 
           onClick={() => setIsNewOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:bg-orange-500 transition-all hover:-translate-y-0.5"
@@ -126,7 +266,15 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         </div>
       </div>
 
-      {/* Tabla Central */}
+      {/* Banner de Modo Edición activo */}
+      {modoEdicion && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-100 animate-in fade-in duration-200">
+          <Pencil size={14} />
+          <span className="font-bold">Modo Edición activo</span> — Modifica los umbrales de alerta y presiona &quot;Guardar Cambios&quot;.
+        </div>
+      )}
+
+      {/* ═══ Tabla Central ═══ */}
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
@@ -134,13 +282,16 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
               <tr>
                 <th scope="col" className="py-4 pl-6 pr-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Insumo</th>
                 <th scope="col" className="px-3 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock Actual</th>
-                <th scope="col" className="px-3 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                <th scope="col" className="px-3 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  {modoEdicion ? 'Umbral (Editable)' : 'Estado'}
+                </th>
                 <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {ingredientes.map((ing) => {
-                const enAlerta = ing.stock_actual <= ing.punto_reorden;
+                const umbralActual = modoEdicion ? (umbralesEditados[ing.id] ?? ing.punto_reorden) : ing.punto_reorden;
+                const enAlerta = ing.stock_actual <= umbralActual;
                 
                 return (
                   <tr key={ing.id} className="hover:bg-slate-50/50 transition-colors">
@@ -154,15 +305,31 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                       {ing.stock_actual.toLocaleString()}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm">
-                      {enAlerta ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 border border-red-100">
-                          <AlertCircle size={12} /> Requiere Re-abastecer
-                        </span>
+                      {modoEdicion ? (
+                        /* ── Input inline para editar el umbral ── */
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={umbralesEditados[ing.id] ?? ing.punto_reorden}
+                          onChange={(e) => setUmbralesEditados(prev => ({
+                            ...prev,
+                            [ing.id]: Number(e.target.value) || 0
+                          }))}
+                          className="w-24 text-center font-bold text-sm rounded-lg border border-orange-200 bg-orange-50/50 py-2 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 outline-none transition-all"
+                        />
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-100">
-                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                           Stock Óptimo
-                        </span>
+                        /* ── Badge de estado normal ── */
+                        enAlerta ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 border border-red-100">
+                            <AlertCircle size={12} /> Requiere Re-abastecer
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-100">
+                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                             Stock Óptimo
+                          </span>
+                        )
                       )}
                     </td>
                     <td className="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
@@ -181,6 +348,13 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                         >
                           <ArrowDownCircle size={20} />
                         </button>
+                        <button 
+                          onClick={() => iniciarEliminacion(ing)}
+                          className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          title={`Eliminar ${ing.nombre}`}
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -191,7 +365,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         </div>
       </div>
 
-      {/* Modal Nuevo Insumo */}
+      {/* ═══ Modal: Nuevo Insumo ═══ */}
       {isNewOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
@@ -281,7 +455,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         </div>
       )}
 
-      {/* Modal de Ajuste (Inline para MVP) */}
+      {/* ═══ Modal: Ajuste de Stock ═══ */}
       {selectedItem && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative">
@@ -336,6 +510,75 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Modal: Alerta de Dependencias (Soft Delete) ═══ */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+            <div className="absolute -top-6 inset-x-0 flex justify-center">
+              <div className="p-4 rounded-full shadow-lg bg-red-500 text-white">
+                <AlertTriangle size={28} />
+              </div>
+            </div>
+
+            <div className="mt-8 text-center">
+              <h3 className="text-xl font-bold text-slate-900">
+                Eliminar &quot;{deleteTarget.nombre}&quot;
+              </h3>
+
+              {cargandoDependencias ? (
+                <p className="text-sm text-slate-500 mt-3">Verificando dependencias...</p>
+              ) : dependencias.cantidad > 0 ? (
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                    <AlertTriangle size={16} className="flex-shrink-0" />
+                    <span>
+                      Este insumo está activo en <strong>{dependencias.cantidad}</strong> receta(s).
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {dependencias.nombres.map((nombre) => (
+                      <span
+                        key={nombre}
+                        className="inline-flex items-center bg-orange-50 text-orange-700 border border-orange-100 rounded-full px-3 py-1 text-xs font-bold"
+                      >
+                        {nombre}
+                      </span>
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-slate-500">
+                    ¿Deseas desvincularlo de todas las recetas y eliminarlo de la bodega?
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 mt-3">
+                  Este insumo no está vinculado a ninguna receta. Se puede eliminar sin riesgo.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-6">
+              <button
+                type="button"
+                onClick={() => { setDeleteTarget(null); setDependencias({ cantidad: 0, nombres: [] }); }}
+                disabled={isPending}
+                className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminacion}
+                disabled={isPending || cargandoDependencias}
+                className="flex-1 px-4 py-3 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 bg-red-500 shadow-red-500/20 hover:bg-red-600"
+              >
+                {isPending ? 'Eliminando...' : 'Sí, Eliminar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
