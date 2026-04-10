@@ -3,15 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, Package, Bell, Pizza, Receipt, UtensilsCrossed, ChefHat } from 'lucide-react';
+import { Store, Package, ShoppingBasket, Pizza, Receipt, UtensilsCrossed, ChefHat } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { label: 'Caja POS',  href: '/pos',        icon: Store           },
-  { label: 'Ventas',    href: '/ventas',      icon: Receipt         },
-  { label: 'Recetas',   href: '/sabores',     icon: ChefHat         },
-  { label: 'Gramajes',  href: '/raciones',    icon: UtensilsCrossed },
-  { label: 'Bodega',    href: '/inventario',  icon: Package         },
-  { label: 'Alertas',   href: '/alertas',     icon: Bell            },
+  { label: 'Caja POS',    href: '/pos',        icon: Store           },
+  { label: 'Ventas',      href: '/ventas',      icon: Receipt         },
+  { label: 'Recetas',     href: '/sabores',     icon: ChefHat         },
+  { label: 'Gramajes',    href: '/raciones',    icon: UtensilsCrossed },
+  { label: 'Bodega',      href: '/inventario',  icon: Package         },
+  { label: 'Por Comprar', href: '/alertas',     icon: ShoppingBasket  },
 ];
 
 /**

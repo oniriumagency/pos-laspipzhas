@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import {
   Store,
   Package,
-  Bell,
+  ShoppingBasket,
   UtensilsCrossed,
   Receipt,
   Settings,
@@ -20,12 +20,12 @@ import { SettingsModal } from './SettingsModal';
 
 // ─── Rutas del menú interno del FAB ─────────────────────────────────────────
 const NAV_ITEMS = [
-  { label: 'Caja POS',  href: '/pos',        icon: Store          },
-  { label: 'Recetas',   href: '/sabores',     icon: ChefHat        },
-  { label: 'Gramajes',  href: '/raciones',    icon: UtensilsCrossed },
-  { label: 'Bodega',    href: '/inventario',  icon: Package        },
-  { label: 'Alertas',   href: '/alertas',     icon: Bell           },
-  { label: 'Historial', href: '/ventas',      icon: Receipt        },
+  { label: 'Caja POS',    href: '/pos',        icon: Store           },
+  { label: 'Recetas',     href: '/sabores',     icon: ChefHat         },
+  { label: 'Gramajes',    href: '/raciones',    icon: UtensilsCrossed },
+  { label: 'Bodega',      href: '/inventario',  icon: Package         },
+  { label: 'Por Comprar', href: '/alertas',     icon: ShoppingBasket  },
+  { label: 'Historial',   href: '/ventas',      icon: Receipt         },
 ];
 
 /**
