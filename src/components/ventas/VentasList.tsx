@@ -105,7 +105,7 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
   const obtenerBadge = (origen: string) => {
     switch (origen) {
       case 'Rappi':
-        return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFE5D9] text-[#FF5A00] uppercase tracking-widest border border-[#FFBA99]">Rappi</span>;
+        return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-pink-500 text-white uppercase tracking-widest border border-pink-500">Rappi</span>;
       case 'DiDi':
         return <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 uppercase tracking-widest border border-orange-200">DiDi</span>;
       case 'Propio':
@@ -237,8 +237,8 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
               key={origen}
               onClick={() => alternarFiltro(origen)}
               className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all duration-200 border ${estaSeleccionado
-                  ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm'
-                  : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
+                ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm'
+                : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
                 }`}
             >
               {origen}
@@ -349,8 +349,8 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                           key={origen.valor}
                           onClick={() => setOrigenEditado(origen.valor)}
                           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-bold transition-all duration-200 border-2 shadow-sm ${estaActivo
-                              ? `${origen.claseActiva} shadow-md`
-                              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                            ? `${origen.claseActiva} shadow-md`
+                            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
                             }`}
                         >
                           <Icono size={14} className="flex-shrink-0" />
@@ -500,8 +500,8 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                     key={tamano.id}
                     onClick={() => setTamanoSeleccionado(tamano)}
                     className={`p-3 rounded-xl border-2 text-sm font-bold transition-all ${tamanoSeleccionado?.id === tamano.id
-                        ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                       }`}
                   >
                     <span className="block">{tamano.nombre}</span>
@@ -520,8 +520,8 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                     key={sabor.id}
                     onClick={() => setSaborSeleccionado(sabor)}
                     className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${saborSeleccionado?.id === sabor.id
-                        ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                       }`}
                   >
                     {sabor.nombre}
