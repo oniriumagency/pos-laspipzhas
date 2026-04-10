@@ -38,6 +38,8 @@ export function MasterFAB() {
   const { getCartItemCount } = usePosStore();
   const itemCount = getCartItemCount();
 
+  const [mounted, setMounted] = useState(false);
+
   // ── Framer Motion state ──────────────────────────────────────────────────
   const x       = useMotionValue(0);
   const y       = useMotionValue(0);
@@ -53,6 +55,7 @@ export function MasterFAB() {
       const initY = vh  - FAB_SIZE - SNAP_MARGIN - 80; // 80px encima del bottom tab bar
       x.set(initX);
       y.set(initY);
+      setMounted(true);
     };
     setInitialPosition();
     window.addEventListener('resize', setInitialPosition);
@@ -104,9 +107,11 @@ export function MasterFAB() {
           ───────────────────────────────────────────────────────────────────── */}
       <div className="md:hidden">
 
-        {/* Backdrop al abrir el menú */}
-        {isOpen && (
-          <motion.div
+        {(!mounted) ? null : (
+          <>
+            {/* Backdrop al abrir el menú */}
+            {isOpen && (
+              <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -185,7 +190,7 @@ export function MasterFAB() {
           dragElastic={0.1}
           onDragEnd={handleDragEnd}
           animate={controls}
-          style={{ x, y, position: 'fixed', zIndex: 155, touchAction: 'none' }}
+          style={{ x, y, position: 'fixed', top: 0, left: 0, zIndex: 155, touchAction: 'none' }}
           whileDrag={{ scale: 1.1, zIndex: 170 }}
         >
           <motion.button
@@ -221,6 +226,8 @@ export function MasterFAB() {
             )}
           </motion.button>
         </motion.div>
+        
+        </>}
 
       </div>
 
