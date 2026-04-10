@@ -20,7 +20,6 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const [saborCompleta, setSaborCompleta] = useState<Sabor | null>(null);
   const [saborMitad1, setSaborMitad1] = useState<Sabor | null>(null);
   const [saborMitad2, setSaborMitad2] = useState<Sabor | null>(null);
-  const [extras, setExtras] = useState<Topping[]>([]);
   const [activeTab, setActiveTab] = useState<'m1' | 'm2' | 'extras'>('m1');
   const [cantidad, setCantidad] = useState(1);
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState<number>(0);
@@ -73,7 +72,6 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
       setSaborCompleta(null);
       setSaborMitad1(null);
       setSaborMitad2(null);
-      setExtras([]);
       setActiveTab('m1');
       setCantidad(1);
       setDescuentoPorcentaje(0);
@@ -106,7 +104,6 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
 
     addToCart({
       tamano_id: tamano.id,
-      tamano_nombre: tamano.nombre,
       precio_unitario: currentTotal,
       descuento_porcentaje: Math.min(100, Math.max(0, descuentoPorcentaje)),
       es_mitades: esMitades,
