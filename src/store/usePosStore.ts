@@ -15,13 +15,14 @@ export type Sabor = {
 };
 
 // Estrictamente los 3 orígenes válidos para el negocio
-export type OrigenVenta = 'propio' | 'rappi' | 'didi';
+export type OrigenVenta = 'Propio' | 'Rappi' | 'DiDi';
 
 export type CartItem = {
   id: string;
   tamano_id: string;
   tamano_nombre: string;
   precio_unitario: number;
+  descuento_porcentaje?: number; // Descuento individual por ítem (0-100)
   es_mitades: boolean;
   sabor_1?: Sabor;
   sabor_2?: Sabor;
@@ -108,10 +109,11 @@ export const usePosStore = create<PosState>((set, get) => ({
 
   getSubtotal: () => {
     const { cart } = get();
-    return cart.reduce(
-      (total, item) => total + item.precio_unitario * item.cantidad,
-      0
-    );
+    return cart.reduce((total, item) => {
+      const itemDiscount = item.descuento_porcentaje || 0;
+      const baseTotal = item.precio_unitario * item.cantidad;
+      return total + (baseTotal * (1 - itemDiscount / 100));
+    }, 0);
   },
 
   getDescuentoAmount: () => {

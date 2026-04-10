@@ -16,9 +16,9 @@ const ORIGENES: {
   icon: React.ElementType;
   activeClass: string;
 }[] = [
-  { value: 'propio',  label: 'Propio',  icon: Store,           activeClass: 'bg-orange-500 text-white shadow-orange-200' },
-  { value: 'rappi',   label: 'Rappi',   icon: Bike,            activeClass: 'bg-orange-500 text-white shadow-orange-200'  },
-  { value: 'didi',    label: 'DiDi',    icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white shadow-orange-200'  },
+  { value: 'Propio',  label: 'Propio',  icon: Store,           activeClass: 'bg-orange-500 text-white shadow-orange-200' },
+  { value: 'Rappi',   label: 'Rappi',   icon: Bike,            activeClass: 'bg-orange-500 text-white shadow-orange-200'  },
+  { value: 'DiDi',    label: 'DiDi',    icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white shadow-orange-200'  },
 ];
 
 // ─── Pills de descuento disponibles ─────────────────────────────────────────
@@ -146,9 +146,16 @@ export function CartSidebar() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-bold text-slate-800">Pizza {item.tamano_nombre}</h4>
-                      <span className="text-orange-500 font-bold text-sm">
-                        ${item.precio_unitario.toLocaleString()} c/u
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-orange-500 font-bold text-sm">
+                          ${item.precio_unitario.toLocaleString()} c/u
+                        </span>
+                        {(item.descuento_porcentaje ?? 0) > 0 && (
+                          <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
+                            -{item.descuento_porcentaje}%
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
@@ -192,7 +199,7 @@ export function CartSidebar() {
                       </button>
                     </div>
                     <span className="font-black text-slate-800 text-base">
-                      ${(item.precio_unitario * item.cantidad).toLocaleString()}
+                      ${Math.round(item.precio_unitario * item.cantidad * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString()}
                     </span>
                   </div>
                 </div>

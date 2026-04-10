@@ -110,7 +110,7 @@ export function MasterFAB() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[88] bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -122,7 +122,7 @@ export function MasterFAB() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="fixed z-[95]"
+            className="fixed z-[160]"
             style={{
               left: x,
               top: y,
@@ -185,8 +185,8 @@ export function MasterFAB() {
           dragElastic={0.1}
           onDragEnd={handleDragEnd}
           animate={controls}
-          style={{ x, y, position: 'fixed', zIndex: 96, touchAction: 'none' }}
-          whileDrag={{ scale: 1.1, zIndex: 100 }}
+          style={{ x, y, position: 'fixed', zIndex: 155, touchAction: 'none' }}
+          whileDrag={{ scale: 1.1, zIndex: 170 }}
         >
           <motion.button
             id="master-fab-btn"

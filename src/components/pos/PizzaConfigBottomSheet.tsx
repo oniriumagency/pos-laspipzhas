@@ -20,9 +20,9 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const [saborCompleta, setSaborCompleta] = useState<Sabor | null>(null);
   const [saborMitad1, setSaborMitad1] = useState<Sabor | null>(null);
   const [saborMitad2, setSaborMitad2] = useState<Sabor | null>(null);
-  const [extras, setExtras] = useState<Topping[]>([]);
   const [activeTab, setActiveTab] = useState<'m1' | 'm2' | 'extras'>('m1');
   const [cantidad, setCantidad] = useState(1);
+  const [descuentoPorcentaje, setDescuentoPorcentaje] = useState<number>(0);
 
 
   // Determinar precio base según tamaño y sabor
@@ -72,9 +72,9 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
       setSaborCompleta(null);
       setSaborMitad1(null);
       setSaborMitad2(null);
-      setExtras([]);
       setActiveTab('m1');
       setCantidad(1);
+      setDescuentoPorcentaje(0);
     }
   }, [isOpen]);
 
@@ -104,8 +104,8 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
 
     addToCart({
       tamano_id: tamano.id,
-      tamano_nombre: tamano.nombre,
       precio_unitario: currentTotal,
+      descuento_porcentaje: Math.min(100, Math.max(0, descuentoPorcentaje)),
       es_mitades: esMitades,
       sabor_1: esMitades ? saborMitad1! : saborCompleta!,
       sabor_2: esMitades ? saborMitad2! : undefined,
@@ -263,13 +263,30 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
           )}
         </div>
 
-        {/* Selector de Cantidad */}
-        <div className="px-5 py-4 bg-white border-t border-slate-100">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 max-w-[180px]">
-             <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">-</button>
-             <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
-             <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">+</button>
+        {/* Selector de Cantidad y Descuento */}
+        <div className="px-5 py-4 bg-white border-t border-slate-100 flex gap-4">
+          <div className="flex-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 max-w-full">
+               <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">-</button>
+               <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
+               <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">+</button>
+            </div>
+          </div>
+          
+          <div className="flex-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block text-right">Desc. Promo</label>
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 h-12 focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-200 transition-all">
+              <span className="text-orange-500 mr-2 font-black">%</span>
+              <input
+                type="number"
+                min="0" max="100"
+                value={descuentoPorcentaje || ''}
+                onChange={(e) => setDescuentoPorcentaje(parseInt(e.target.value) || 0)}
+                placeholder="0"
+                className="w-full bg-transparent font-bold text-slate-800 outline-none text-right"
+              />
+            </div>
           </div>
         </div>
 
