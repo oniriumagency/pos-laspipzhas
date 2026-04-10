@@ -14,13 +14,14 @@ export type Sabor = {
   categoria: string;
 };
 
-export type OrigenVenta = 'local' | 'delivery' | 'whatsapp' | 'telefono';
+// Estrictamente los 3 orígenes válidos para el negocio
+export type OrigenVenta = 'propio' | 'rappi' | 'didi';
 
 export type CartItem = {
-  id: string; // ID local único del frontend (para iterar listas y borrar items)
+  id: string;
   tamano_id: string;
   tamano_nombre: string;
-  precio_unitario: number; 
+  precio_unitario: number;
   es_mitades: boolean;
   sabor_1?: Sabor;
   sabor_2?: Sabor;
@@ -38,39 +39,53 @@ interface PosState {
   updateQuantity: (itemId: string, cantidad: number) => void;
   clearCart: () => void;
 
-  // Configuración de la venta (persiste entre items)
-  origenVenta: OrigenVenta;
+  // ── Configuración de la Venta ─────────────────────────
+  // null = sin seleccionar (bloquea el checkout)
+  origenVenta: OrigenVenta | null;
   setOrigenVenta: (origen: OrigenVenta) => void;
 
   // Descuento Global (% sobre el total de la orden)
   descuentoGlobal: number; // 0–100
   setDescuentoGlobal: (pct: number) => void;
 
-  // Selectores derivados
+  // ── PWA Install Prompt ───────────────────────────────
+  // El evento se guarda aquí desde el PwaInstaller y se consume en el SettingsModal
+  pwaInstallPrompt: BeforeInstallPromptEvent | null;
+  setPwaInstallPrompt: (event: BeforeInstallPromptEvent | null) => void;
+
+  // ── Selectores Derivados ─────────────────────────────
   getSubtotal: () => number;
   getDescuentoAmount: () => number;
   getTotal: () => number;
   getCartItemCount: () => number;
 }
 
+// Tipo global para el evento PWA (no está en el TS lib estándar)
+export interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  prompt(): Promise<void>;
+}
+
 export const usePosStore = create<PosState>((set, get) => ({
   cart: [],
   isCartOpen: false,
-  origenVenta: 'local',
+  origenVenta: null,       // ← null hasta que el cajero seleccione
   descuentoGlobal: 0,
+  pwaInstallPrompt: null,
 
   setCartOpen: (open) => set({ isCartOpen: open }),
   setOrigenVenta: (origen) => set({ origenVenta: origen }),
-  setDescuentoGlobal: (pct) => set({ descuentoGlobal: Math.min(100, Math.max(0, pct)) }),
+  setDescuentoGlobal: (pct) =>
+    set({ descuentoGlobal: Math.min(100, Math.max(0, pct)) }),
+  setPwaInstallPrompt: (event) => set({ pwaInstallPrompt: event }),
 
   addToCart: (item) => {
     const id =
       typeof crypto !== 'undefined'
         ? crypto.randomUUID()
         : Math.random().toString(36).substring(7);
-    set((state) => ({
-      cart: [...state.cart, { ...item, id }],
-    }));
+    set((state) => ({ cart: [...state.cart, { ...item, id }] }));
   },
 
   removeFromCart: (itemId) => {
@@ -82,15 +97,13 @@ export const usePosStore = create<PosState>((set, get) => ({
   updateQuantity: (itemId, cantidad) => {
     set((state) => ({
       cart: state.cart.map((item) =>
-        item.id === itemId
-          ? { ...item, cantidad: Math.max(1, cantidad) }
-          : item
+        item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
       ),
     }));
   },
 
   clearCart: () => {
-    set({ cart: [], descuentoGlobal: 0 });
+    set({ cart: [], descuentoGlobal: 0, origenVenta: null });
   },
 
   getSubtotal: () => {
@@ -111,7 +124,6 @@ export const usePosStore = create<PosState>((set, get) => ({
     return getSubtotal() - getDescuentoAmount();
   },
 
-  // Alias de compatibilidad que algunos componentes todavía pueden usar
   getCartItemCount: () => {
     const { cart } = get();
     return cart.reduce((count, item) => count + item.cantidad, 0);

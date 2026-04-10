@@ -1,180 +1,233 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { ShoppingCart, Settings, Pizza } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, useMotionValue, useAnimation, PanInfo } from 'framer-motion';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Store,
+  Package,
+  Bell,
+  UtensilsCrossed,
+  Receipt,
+  Settings,
+  X,
+  Pizza,
+} from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { SettingsModal } from './SettingsModal';
 
-/**
- * MasterFAB — Floating Action Button
- * 
- * Un único botón flotante naranja que al pulsarse expande un menú radial con:
- *  - Botón principal: muestra el conteo del carrito y abre la sidebar
- *  - Acciones secundarias: Configuración (settings), etc.
- *
- * Posición: Bottom-right en desktop, sobre el bottom tab bar en móvil.
- * Z-index: 90 para estar sobre el contenido pero bajo los modales (z-[200]).
- */
+// ─── Rutas del menú interno del FAB ─────────────────────────────────────────
+const NAV_ITEMS = [
+  { label: 'Caja POS',  href: '/pos',        icon: Store          },
+  { label: 'Bodega',    href: '/inventario',  icon: Package        },
+  { label: 'Recetas',   href: '/raciones',    icon: UtensilsCrossed },
+  { label: 'Alertas',   href: '/alertas',     icon: Bell           },
+  { label: 'Historial', href: '/ventas',      icon: Receipt        },
+];
+
+// ─── Constantes de posicionamiento ──────────────────────────────────────────
+const FAB_SIZE   = 56;   // px — lado del botón circular
+const SNAP_MARGIN = 16;  // px — distancia mínima desde el borde de pantalla
+
 export function MasterFAB() {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const pathname     = usePathname();
+  const [isOpen,     setIsOpen]     = useState(false);
+  const [isSettings, setIsSettings] = useState(false);
 
-  const { getCartItemCount, setCartOpen, isCartOpen, origenVenta, descuentoGlobal } =
-    usePosStore();
-
+  const { getCartItemCount } = usePosStore();
   const itemCount = getCartItemCount();
 
-  const handleCartAction = useCallback(() => {
-    setIsExpanded(false);
-    setCartOpen(!isCartOpen);
-  }, [isCartOpen, setCartOpen]);
+  // ── Framer Motion state ──────────────────────────────────────────────────
+  const x       = useMotionValue(0);
+  const y       = useMotionValue(0);
+  const controls = useAnimation();
+  const fabRef  = useRef<HTMLDivElement>(null);
 
-  const handleSettingsAction = useCallback(() => {
-    setIsExpanded(false);
-    setIsSettingsOpen(true);
-  }, []);
+  // Posición inicial: esquina inferior derecha sobre el bottom tab bar
+  useEffect(() => {
+    const setInitialPosition = () => {
+      const vw    = window.innerWidth;
+      const vh    = window.innerHeight;
+      const initX = vw  - FAB_SIZE - SNAP_MARGIN;
+      const initY = vh  - FAB_SIZE - SNAP_MARGIN - 80; // 80px encima del bottom tab bar
+      x.set(initX);
+      y.set(initY);
+    };
+    setInitialPosition();
+    window.addEventListener('resize', setInitialPosition);
+    return () => window.removeEventListener('resize', setInitialPosition);
+  }, [x, y]);
 
-  const toggleExpand = () => setIsExpanded((prev) => !prev);
+  // ── Lógica de snap al borde más cercano ─────────────────────────────────
+  const handleDragEnd = useCallback(
+    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      const vw  = window.innerWidth;
+      const vh  = window.innerHeight;
+      const cx  = x.get() + FAB_SIZE / 2;   // centro X actual
+      const cy  = y.get() + FAB_SIZE / 2;   // centro Y actual
 
-  // Etiqueta del origen para el tooltip del FAB
-  const origenLabel: Record<string, string> = {
-    local: 'Local',
-    delivery: 'Delivery',
-    whatsapp: 'WhatsApp',
-    telefono: 'Teléfono',
-  };
+      // Snapping horizontal: izquierdo o derecho
+      const snapX =
+        cx < vw / 2
+          ? SNAP_MARGIN                           // borde izquierdo
+          : vw - FAB_SIZE - SNAP_MARGIN;          // borde derecho
+
+      // Mantener dentro de los límites verticales
+      const clampedY = Math.min(
+        Math.max(SNAP_MARGIN, cy - FAB_SIZE / 2),
+        vh - FAB_SIZE - SNAP_MARGIN - 80
+      );
+
+      controls.start({
+        x: snapX,
+        y: clampedY,
+        transition: { type: 'spring', stiffness: 400, damping: 35 },
+      });
+    },
+    [x, y, controls]
+  );
+
+  // ── Cierre del menú al navegar ───────────────────────────────────────────
+  useEffect(() => { setIsOpen(false); }, [pathname]);
+
+  // ── Items de navegación con estado activo ────────────────────────────────
+  const navItems = NAV_ITEMS.map((item) => ({
+    ...item,
+    isActive: pathname?.startsWith(item.href) ?? false,
+  }));
 
   return (
     <>
-      {/* ──────────────────────────────────────────────
-          Backdrop difuminado (solo cuando está expandido)
-          ────────────────────────────────────────────── */}
-      {isExpanded && (
-        <div
-          className="fixed inset-0 z-[85] bg-black/10"
-          onClick={() => setIsExpanded(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* ─────────────────────────────────────────────────────────────────────
+          SOLO VISIBLE EN MÓVIL — el sidebar de escritorio cubre la navegación
+          ───────────────────────────────────────────────────────────────────── */}
+      <div className="md:hidden">
 
-      {/* ──────────────────────────────────────────────
-          Contenedor FAB — fijo, esquina inferior derecha
-          - En móvil: bottom-[5.5rem] para estar arriba del Bottom Tab Bar
-          - En desktop (md+): bottom-6
-          ────────────────────────────────────────────── */}
-      <div
-        className="fixed bottom-[5.5rem] right-4 md:bottom-6 md:right-6 z-[90] flex flex-col-reverse items-center gap-3"
-        role="group"
-        aria-label="Menú de acciones rápidas"
-      >
-        {/* ── Acciones secundarias (aparecen cuando se expande) ── */}
-
-        {/* Botón de Configuración */}
-        <div
-          className={`transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-            isExpanded
-              ? 'opacity-100 translate-y-0 scale-100'
-              : 'opacity-0 translate-y-6 scale-75 pointer-events-none'
-          }`}
-          style={{ transitionDelay: isExpanded ? '0ms' : '0ms' }}
-        >
-          <div className="relative flex items-center justify-end gap-3">
-            {/* Tooltip label */}
-            <span className="bg-gray-900/90 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-lg whitespace-nowrap">
-              Configurar Venta
-              {descuentoGlobal > 0 && (
-                <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  -{descuentoGlobal}%
-                </span>
-              )}
-            </span>
-            <button
-              id="fab-settings-btn"
-              onClick={handleSettingsAction}
-              className="w-12 h-12 rounded-full bg-white shadow-xl border border-gray-100 flex items-center justify-center text-gray-700 hover:text-orange-600 hover:border-orange-200 hover:shadow-orange-100 transition-all duration-200 active:scale-95"
-              aria-label="Abrir configuración de venta"
-            >
-              <Settings size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Botón del Carrito */}
-        <div
-          className={`transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-            isExpanded
-              ? 'opacity-100 translate-y-0 scale-100'
-              : 'opacity-0 translate-y-8 scale-75 pointer-events-none'
-          }`}
-          style={{ transitionDelay: isExpanded ? '60ms' : '0ms' }}
-        >
-          <div className="relative flex items-center justify-end gap-3">
-            {/* Tooltip label */}
-            <span className="bg-gray-900/90 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-lg whitespace-nowrap">
-              {itemCount > 0 ? `Ver Orden (${itemCount})` : 'Carrito vacío'}
-            </span>
-            <button
-              id="fab-cart-btn"
-              onClick={handleCartAction}
-              className="w-12 h-12 rounded-full bg-slate-800 shadow-xl flex items-center justify-center text-white hover:bg-slate-900 hover:shadow-slate-300 transition-all duration-200 active:scale-95 relative"
-              aria-label="Abrir carrito"
-            >
-              <ShoppingCart size={20} />
-              {/* Badge con conteo */}
-              {itemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-orange-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm border-2 border-white">
-                  {itemCount > 9 ? '9+' : itemCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Botón Principal (siempre visible) ── */}
-        <button
-          id="fab-main-btn"
-          onClick={toggleExpand}
-          className={`
-            relative w-14 h-14 rounded-full shadow-2xl flex items-center justify-center
-            transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-            focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-400/50
-            ${isExpanded
-              ? 'bg-gray-900 rotate-45 scale-95 shadow-gray-400/30'
-              : 'bg-gradient-to-br from-orange-400 to-orange-600 hover:-translate-y-1 hover:shadow-orange-400/40'}
-          `}
-          aria-label={isExpanded ? 'Cerrar menú' : 'Abrir menú de acciones'}
-          aria-expanded={isExpanded}
-        >
-          {isExpanded ? (
-            /* X cuando está expandido */
-            <span className="text-white font-black text-2xl leading-none select-none">×</span>
-          ) : (
-            /* Pizza icon con badge del carrito */
-            <>
-              <Pizza size={24} className="text-white drop-shadow-sm" />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-white text-orange-600 text-[10px] font-black rounded-full flex items-center justify-center shadow border border-orange-100">
-                  {itemCount > 9 ? '9+' : itemCount}
-                </span>
-              )}
-            </>
-          )}
-        </button>
-
-        {/* Indicador de origen activo (debajo del FAB, solo en desktop) */}
-        {!isExpanded && (
-          <div className="hidden md:block absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap">
-            <span className="text-[10px] font-bold text-gray-400 tracking-wide">
-              {origenLabel[origenVenta]}
-            </span>
-          </div>
+        {/* Backdrop al abrir el menú */}
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[88] bg-black/30 backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
         )}
+
+        {/* ── Menú radial (aparece encima del FAB cuando isOpen) ── */}
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed z-[95]"
+            style={{
+              left: x,
+              top: y,
+              transform: 'translateY(calc(-100% - 8px))',
+            }}
+          >
+            <div
+              className="bg-white rounded-[1.5rem] shadow-2xl border border-gray-100 overflow-hidden"
+              style={{ minWidth: 200 }}
+            >
+              {/* Navegación */}
+              <nav className="p-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className={`
+                        flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150 font-semibold
+                        ${item.isActive
+                          ? 'bg-orange-50 text-orange-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                      `}
+                    >
+                      <Icon
+                        size={18}
+                        strokeWidth={item.isActive ? 2.5 : 2}
+                        className="flex-shrink-0"
+                      />
+                      <span className="text-sm">{item.label}</span>
+                      {item.isActive && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Separador + Configuración */}
+              <div className="border-t border-gray-100 p-2">
+                <button
+                  onClick={() => { setIsOpen(false); setIsSettings(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors font-semibold"
+                >
+                  <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
+                  <span className="text-sm">Configuración</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── FAB principal — Draggable ── */}
+        <motion.div
+          ref={fabRef}
+          drag
+          dragMomentum={false}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
+          animate={controls}
+          style={{ x, y, position: 'fixed', zIndex: 96, touchAction: 'none' }}
+          whileDrag={{ scale: 1.1, zIndex: 100 }}
+        >
+          <motion.button
+            id="master-fab-btn"
+            onTap={() => setIsOpen((prev) => !prev)}
+            whileTap={{ scale: 0.93 }}
+            className={`
+              w-14 h-14 rounded-full shadow-2xl flex items-center justify-center
+              transition-colors duration-200 focus:outline-none select-none
+              ${isOpen
+                ? 'bg-gray-900 text-white'
+                : 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'}
+            `}
+            style={{ boxShadow: '0 8px 32px rgba(234,88,12,0.35)' }}
+            aria-label={isOpen ? 'Cerrar menú' : 'Abrir navegación'}
+            aria-expanded={isOpen}
+          >
+            {isOpen ? (
+              <X size={22} strokeWidth={2.5} />
+            ) : (
+              <>
+                <Pizza size={24} className="drop-shadow-sm" />
+                {/* Badge de carrito */}
+                {itemCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-white text-orange-600 text-[10px] font-black rounded-full flex items-center justify-center border border-orange-100 shadow-sm"
+                    aria-label={`${itemCount} artículos en el carrito`}
+                  >
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                )}
+              </>
+            )}
+          </motion.button>
+        </motion.div>
+
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal — disponible para ambas resoluciones */}
       <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        isOpen={isSettings}
+        onClose={() => setIsSettings(false)}
       />
     </>
   );

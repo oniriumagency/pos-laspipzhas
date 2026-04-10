@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'sonner';
+import { PwaInstaller } from '@/components/layout/PwaInstaller';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,7 +18,6 @@ export const metadata: Metadata = {
   other: {
     'mobile-web-app-capable': 'yes',
     'msapplication-TileColor': '#ea580c',
-    'msapplication-tap-highlight': 'no',
   },
 };
 
@@ -45,12 +45,19 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="antialiased">
-        {/* Proveedor global de Notificaciones Sonner */}
+        {/* Notificaciones globales */}
         <Toaster richColors position="top-right" closeButton theme="light" />
-        
+
         {children}
 
-        {/* Registro del Service Worker — Solo en producción/cliente */}
+        {/*
+          PwaInstaller captura el evento beforeinstallprompt del navegador
+          y lo guarda en el store para que el SettingsModal pueda mostrarlo.
+          Se monta aquí para estar disponible en toda la app desde el inicio.
+        */}
+        <PwaInstaller />
+
+        {/* Registro del Service Worker */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -58,10 +65,10 @@ export default function RootLayout({
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then(function(reg) {
-                      console.log('[PWA] Service Worker registrado. Scope:', reg.scope);
+                      console.log('[PWA] SW registrado. Scope:', reg.scope);
                     })
                     .catch(function(err) {
-                      console.warn('[PWA] Error al registrar Service Worker:', err);
+                      console.warn('[PWA] Error al registrar SW:', err);
                     });
                 });
               }

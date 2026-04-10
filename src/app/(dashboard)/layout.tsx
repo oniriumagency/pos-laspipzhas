@@ -32,7 +32,7 @@ export default function DashboardLayout({
           insertamos un "Padding Izquierdo" (`md:pl-64` = 256px) para acorralar físicamente 
           las páginas a la derecha de forma que no se choquen ni queden debajo del Sidebar.
       */}
-      <main className="pb-24 md:pb-0 md:pl-64 transition-all duration-300 ease-in-out relative overflow-hidden h-full">
+      <main className="pb-4 md:pb-0 md:pl-64 transition-all duration-300 ease-in-out relative overflow-hidden h-full">
         {children}
       </main>
 

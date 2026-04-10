@@ -5,77 +5,45 @@ import { revalidatePath } from 'next/cache';
 import { CartItem } from '@/store/usePosStore';
 
 /**
- * processSale — Server Action
- * 
- * Orquesta una venta completa:
- *  1. Verifica la sesión del usuario.
- *  2. Resuelve los ingredientes base por tamaño.
- *  3. Resuelve los ingredientes de cada sabor.
- *  4. Calcula el total con el descuento global.
- *  5. Llama al RPC `procesar_venta` en Supabase de forma atómica.
- *  6. Invalida las vistas de inventario y ventas.
+ * processSale — Server Action principal del POS.
  *
- * @param cart           - Items del carrito Zustand
- * @param origenVenta    - Canal de la venta ('local' | 'delivery' | 'whatsapp' | 'telefono')
- * @param descuentoGlobal - Porcentaje de descuento sobre el total (0–100)
+ * Orquesta la venta:
+ *  1. Verifica sesión activa.
+ *  2. Resuelve los ingredientes de cada sabor desde la tabla pivot.
+ *  3. Calcula el total con el descuento global aplicado.
+ *  4. Llama al RPC `procesar_venta` de forma atómica.
+ *  5. Invalida el caché de Next.js para las vistas de inventario y ventas.
+ *
+ * NOTA SOBRE EL SCHEMA:
+ *  La tabla `ventas` usa `created_by` (UUID → auth.users), NO `usuario_id`.
+ *  El RPC recibe el user.id como `p_user_id` y lo guarda en `created_by` internamente.
+ *
+ * @param cart            - Items del carrito Zustand
+ * @param origenVenta     - Canal: 'propio' | 'rappi' | 'didi'
+ * @param descuentoGlobal - Porcentaje de descuento 0–100
  */
 export async function processSale(
   cart: CartItem[],
-  origenVenta: string = 'local',
+  origenVenta: string = 'propio',
   descuentoGlobal: number = 0
 ) {
   try {
     const supabase = await createClient();
 
-    // ── 1. Verificar sesión ──
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // ── 1. Verificar sesión ──────────────────────────────────────────────
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError || !user) {
       return { success: false, error: 'No tienes sesión administrativa activa.' };
     }
 
-    // ── 2. Traer ingredientes base con los nombres exactos de la BD ──
-    const NOMBRES_BASE = [
-      'Masa (Bollo crudo)',
-      'Salsa de Tomate',
-      'Queso Mozzarella',
-      'Servilletas',
-    ];
-
-    const { data: baseIng } = await supabase
-      .from('ingredientes')
-      .select('id, nombre')
-      .in('nombre', NOMBRES_BASE);
-
-    /**
-     * Construye la lista de ingredientes base que se descuentan automáticamente
-     * por cada pizza vendida. Las Servilletas se cuentan 3 veces por pizza.
-     */
-    const getBaseList = () => {
-      if (!baseIng) return [];
-      const items: { ingrediente_id: string }[] = [];
-
-      const masa      = baseIng.find(i => i.nombre === 'Masa (Bollo crudo)');
-      const salsa     = baseIng.find(i => i.nombre === 'Salsa de Tomate');
-      const queso     = baseIng.find(i => i.nombre === 'Queso Mozzarella');
-      const servi     = baseIng.find(i => i.nombre === 'Servilletas');
-
-      if (masa)  items.push({ ingrediente_id: masa.id });
-      if (salsa) items.push({ ingrediente_id: salsa.id });
-      if (queso) items.push({ ingrediente_id: queso.id });
-      // 3 servilletas por pizza
-      if (servi) {
-        items.push({ ingrediente_id: servi.id });
-        items.push({ ingrediente_id: servi.id });
-        items.push({ ingrediente_id: servi.id });
-      }
-
-      return items;
-    };
-
-    // ── 3. Resolver ingredientes de sabores ──
+    // ── 2. Resolver ingredientes de cada sabor desde la tabla pivot ──────
     const saborIds = [
-      ...cart.map(i => i.sabor_1?.id),
-      ...cart.map(i => i.sabor_2?.id),
+      ...cart.map((i) => i.sabor_1?.id),
+      ...cart.map((i) => i.sabor_2?.id),
     ].filter(Boolean) as string[];
 
     let relacionesSabor: { sabor_id: string; ingrediente_id: string }[] = [];
@@ -87,20 +55,17 @@ export async function processSale(
       relacionesSabor = rel || [];
     }
 
-    // ── 4. Construir el payload para el RPC ──
+    // ── 3. Construir el payload para el RPC ──────────────────────────────
     const payload = cart.map((item) => {
       const ingMitad1 = relacionesSabor
-        .filter(r => r.sabor_id === item.sabor_1?.id)
-        .map(r => ({ ingrediente_id: r.ingrediente_id }));
+        .filter((r) => r.sabor_id === item.sabor_1?.id)
+        .map((r) => ({ ingrediente_id: r.ingrediente_id }));
 
       const ingMitad2 = item.es_mitades
         ? relacionesSabor
-            .filter(r => r.sabor_id === item.sabor_2?.id)
-            .map(r => ({ ingrediente_id: r.ingrediente_id }))
+            .filter((r) => r.sabor_id === item.sabor_2?.id)
+            .map((r) => ({ ingrediente_id: r.ingrediente_id }))
         : [];
-
-      const extrasReal = item.extras.map(t => ({ ingrediente_id: t.ingrediente_id }));
-      const bases = getBaseList();
 
       return {
         tamano_id:       item.tamano_id,
@@ -111,19 +76,18 @@ export async function processSale(
         cantidad:        item.cantidad,
         mitad_1:         ingMitad1,
         mitad_2:         ingMitad2,
-        extras:          [...bases, ...extrasReal],
+        extras:          item.extras.map((t) => ({ ingrediente_id: t.ingrediente_id })),
       };
     });
 
-    // ── 5. Calcular totales ──
-    const subtotal = cart.reduce(
-      (acc, item) => acc + item.precio_unitario * item.cantidad,
-      0
-    );
-    const descuentoAmount = subtotal * (descuentoGlobal / 100);
-    const totalFinal = Math.round(subtotal - descuentoAmount);
+    // ── 4. Calcular totales con descuento ────────────────────────────────
+    const subtotal      = cart.reduce((acc, item) => acc + item.precio_unitario * item.cantidad, 0);
+    const descuentoAmt  = subtotal * (descuentoGlobal / 100);
+    const totalFinal    = Math.round(subtotal - descuentoAmt);
 
-    // ── 6. Ejecutar RPC atómico ──
+    // ── 5. Ejecutar RPC atómico ──────────────────────────────────────────
+    // IMPORTANTE: la firma del RPC usa p_user_id → lo guarda como `created_by`
+    // No existe columna `usuario_id` en la tabla `ventas`.
     const { data, error } = await supabase.rpc('procesar_venta', {
       cart_payload:       payload,
       p_total_precio:     totalFinal,
@@ -134,23 +98,25 @@ export async function processSale(
 
     if (error) {
       console.error('[processSale] RPC Error:', error);
-      return { success: false, error: 'Error crítico al comunicar con la base de datos.' };
+      return { success: false, error: `Error en la base de datos: ${error.message}` };
     }
 
     const result = data as { success: boolean; error?: string };
     if (!result.success) {
-      return { success: false, error: result.error || 'La BD abortó la transacción.' };
+      return {
+        success: false,
+        error: result.error || 'La base de datos abortó la transacción.',
+      };
     }
 
-    // ── 7. Invalidar cachés de Next.js ──
+    // ── 6. Invalidar caché de Next.js ────────────────────────────────────
     revalidatePath('/inventario');
     revalidatePath('/alertas');
     revalidatePath('/ventas');
 
     return { success: true };
-
   } catch (err: any) {
     console.error('[processSale] Unexpected error:', err);
-    return { success: false, error: err.message || 'Error inesperado.' };
+    return { success: false, error: err.message || 'Error inesperado en el servidor.' };
   }
 }
