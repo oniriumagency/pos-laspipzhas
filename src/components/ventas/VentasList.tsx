@@ -43,9 +43,9 @@ interface VentasListProps {
 
 // ─── Orígenes de venta con colores diferenciados ─────────────────────────────
 const ORIGENES_EDICION = [
-  { valor: 'Propio',  etiqueta: 'Propio',  icono: Store,           claseActiva: 'bg-slate-800 text-white border-slate-900' },
-  { valor: 'Rappi',   etiqueta: 'Rappi',   icono: Bike,            claseActiva: 'bg-[#FF5A00] text-white border-[#FF5A00]' },
-  { valor: 'DiDi',    etiqueta: 'DiDi',    icono: UtensilsCrossed, claseActiva: 'bg-orange-500 text-white border-orange-500' },
+  { valor: 'Propio', etiqueta: 'Propio', icono: Store, claseActiva: 'bg-slate-800 text-white border-slate-900' },
+  { valor: 'Rappi', etiqueta: 'Rappi', icono: Bike, claseActiva: 'bg-pink-500 text-white border-pink-500' },
+  { valor: 'DiDi', etiqueta: 'DiDi', icono: UtensilsCrossed, claseActiva: 'bg-orange-500 text-white border-orange-500' },
 ];
 
 // ─── Componente Principal ────────────────────────────────────────────────────
@@ -236,11 +236,10 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
             <button
               key={origen}
               onClick={() => alternarFiltro(origen)}
-              className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all duration-200 border ${
-                estaSeleccionado
+              className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all duration-200 border ${estaSeleccionado
                   ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm'
                   : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50 hover:text-gray-600'
-              }`}
+                }`}
             >
               {origen}
             </button>
@@ -349,11 +348,10 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                         <button
                           key={origen.valor}
                           onClick={() => setOrigenEditado(origen.valor)}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-bold transition-all duration-200 border-2 shadow-sm ${
-                            estaActivo
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-bold transition-all duration-200 border-2 shadow-sm ${estaActivo
                               ? `${origen.claseActiva} shadow-md`
                               : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           <Icono size={14} className="flex-shrink-0" />
                           <span>{origen.etiqueta}</span>
@@ -389,86 +387,86 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
 
                 {/* Lista de Items Comprados */}
                 <div className="flex-1">
-                   <h4 className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-gray-500 mb-3 flex items-center gap-2">
-                     <Pizza className="w-3.5 h-3.5"/> Pizzas Vendidas
-                   </h4>
-                   <ul className="space-y-2">
-                     {venta.cart_payload.map((item: any, indice: number) => {
-                       // Construir etiqueta descriptiva del payload enriquecido
-                       const etiquetaTamano = item.tamano_nombre || 'Pizza';
-                       const sabor1 = item.sabor_1_nombre;
-                       const sabor2 = item.sabor_2_nombre;
+                  <h4 className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-gray-500 mb-3 flex items-center gap-2">
+                    <Pizza className="w-3.5 h-3.5" /> Pizzas Vendidas
+                  </h4>
+                  <ul className="space-y-2">
+                    {venta.cart_payload.map((item: any, indice: number) => {
+                      // Construir etiqueta descriptiva del payload enriquecido
+                      const etiquetaTamano = item.tamano_nombre || 'Pizza';
+                      const sabor1 = item.sabor_1_nombre;
+                      const sabor2 = item.sabor_2_nombre;
 
-                       let etiquetaSabor = '';
-                       if (sabor1 && sabor2) {
-                         etiquetaSabor = `${sabor1} / ${sabor2}`;
-                       } else if (sabor1) {
-                         etiquetaSabor = sabor1;
-                       }
+                      let etiquetaSabor = '';
+                      if (sabor1 && sabor2) {
+                        etiquetaSabor = `${sabor1} / ${sabor2}`;
+                      } else if (sabor1) {
+                        etiquetaSabor = sabor1;
+                      }
 
-                       const precioUnitario = item.precio_unitario;
+                      const precioUnitario = item.precio_unitario;
 
-                       return (
-                         <li key={indice} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center gap-3">
-                           <div className="min-w-0 flex-1">
-                              <span className="font-bold text-gray-800 block text-sm">
-                                {item.cantidad}x {etiquetaTamano}
-                              </span>
-                              {etiquetaSabor && (
-                                <span className="text-xs text-gray-500 font-medium mt-0.5 block truncate">🍕 {etiquetaSabor}</span>
-                              )}
-                           </div>
-                           <div className="flex flex-col items-end shrink-0">
-                             {item.descuento_porcentaje ? (
-                               <>
-                                 <span className="line-through text-[0.65rem] text-gray-400 font-semibold mb-0.5">${(precioUnitario * item.cantidad).toLocaleString('es-ES')}</span>
-                                 <div className="flex items-center gap-1.5">
-                                   <span className="bg-orange-100 text-orange-600 text-[0.6rem] font-bold px-1 rounded">- {item.descuento_porcentaje}%</span>
-                                   <span className="text-sm font-black text-gray-800">${((precioUnitario * (1 - item.descuento_porcentaje/100)) * item.cantidad).toLocaleString('es-ES')}</span>
-                                 </div>
-                               </>
-                             ) : (
-                               precioUnitario && (
-                                 <span className="text-sm font-black text-gray-800">
-                                   ${(precioUnitario * item.cantidad).toLocaleString('es-ES')}
-                                 </span>
-                               )
-                             )}
-                           </div>
-                         </li>
-                       );
-                     })}
-                   </ul>
+                      return (
+                        <li key={indice} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-gray-800 block text-sm">
+                              {item.cantidad}x {etiquetaTamano}
+                            </span>
+                            {etiquetaSabor && (
+                              <span className="text-xs text-gray-500 font-medium mt-0.5 block truncate">🍕 {etiquetaSabor}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end shrink-0">
+                            {item.descuento_porcentaje ? (
+                              <>
+                                <span className="line-through text-[0.65rem] text-gray-400 font-semibold mb-0.5">${(precioUnitario * item.cantidad).toLocaleString('es-ES')}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="bg-orange-100 text-orange-600 text-[0.6rem] font-bold px-1 rounded">- {item.descuento_porcentaje}%</span>
+                                  <span className="text-sm font-black text-gray-800">${((precioUnitario * (1 - item.descuento_porcentaje / 100)) * item.cantidad).toLocaleString('es-ES')}</span>
+                                </div>
+                              </>
+                            ) : (
+                              precioUnitario && (
+                                <span className="text-sm font-black text-gray-800">
+                                  ${(precioUnitario * item.cantidad).toLocaleString('es-ES')}
+                                </span>
+                              )
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
 
                 {/* Lista de Ingredientes Descontados */}
                 <div className="flex-1">
-                   <h4 className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-orange-600 mb-3 flex items-center gap-2">
-                     <Package2 className="w-3.5 h-3.5"/> Salida de Inventario
-                   </h4>
-                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50/80 border-b border-gray-100 text-[0.6rem] uppercase font-black text-gray-500 tracking-widest">
-                          <tr>
-                            <th className="px-4 py-3">Insumo</th>
-                            <th className="px-4 py-3 text-right">Descontado</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {venta.deducciones.map((deduccion, indice) => {
-                             const ingrediente = ingredientes[deduccion.ing_id];
-                             return (
-                               <tr key={indice} className="hover:bg-gray-50/50">
-                                 <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{ingrediente ? ingrediente.nombre : <span className="text-gray-400 italic">Insumo Eliminado</span>}</td>
-                                 <td className="px-4 py-2.5 text-right font-black text-orange-600 text-sm">
-                                   -{deduccion.cantidad_descontar} <span className="text-[0.65rem] font-bold text-gray-400">{ingrediente?.unidad_medida || 'u'}</span>
-                                 </td>
-                               </tr>
-                             );
-                          })}
-                        </tbody>
-                     </table>
-                   </div>
+                  <h4 className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-orange-600 mb-3 flex items-center gap-2">
+                    <Package2 className="w-3.5 h-3.5" /> Salida de Inventario
+                  </h4>
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50/80 border-b border-gray-100 text-[0.6rem] uppercase font-black text-gray-500 tracking-widest">
+                        <tr>
+                          <th className="px-4 py-3">Insumo</th>
+                          <th className="px-4 py-3 text-right">Descontado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {venta.deducciones.map((deduccion, indice) => {
+                          const ingrediente = ingredientes[deduccion.ing_id];
+                          return (
+                            <tr key={indice} className="hover:bg-gray-50/50">
+                              <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{ingrediente ? ingrediente.nombre : <span className="text-gray-400 italic">Insumo Eliminado</span>}</td>
+                              <td className="px-4 py-2.5 text-right font-black text-orange-600 text-sm">
+                                -{deduccion.cantidad_descontar} <span className="text-[0.65rem] font-bold text-gray-400">{ingrediente?.unidad_medida || 'u'}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
               </div>
@@ -501,11 +499,10 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                   <button
                     key={tamano.id}
                     onClick={() => setTamanoSeleccionado(tamano)}
-                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all ${
-                      tamanoSeleccionado?.id === tamano.id
+                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all ${tamanoSeleccionado?.id === tamano.id
                         ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <span className="block">{tamano.nombre}</span>
                     <span className="text-xs font-semibold text-gray-400">${tamano.precio.toLocaleString('es-ES')}</span>
@@ -522,11 +519,10 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                   <button
                     key={sabor.id}
                     onClick={() => setSaborSeleccionado(sabor)}
-                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${
-                      saborSeleccionado?.id === sabor.id
+                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${saborSeleccionado?.id === sabor.id
                         ? 'border-orange-400 bg-orange-50 text-orange-600 shadow-sm'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     {sabor.nombre}
                   </button>
