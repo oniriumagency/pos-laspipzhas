@@ -20,11 +20,11 @@ import { CartItem } from '@/store/usePosStore';
  *
  * @param cart            - Items del carrito Zustand
  * @param origenVenta     - Canal: 'propio' | 'rappi' | 'didi'
- * @param descuentoGlobal - Porcentaje de descuento 0–100
+ * @param descuentoGlobal - Porcentaje de descuento global a toda la orden (0–100)
  */
 export async function processSale(
   cart: CartItem[],
-  origenVenta: string = 'propio',
+  origenVenta: string = 'Propio',
   descuentoGlobal: number = 0
 ) {
   try {
@@ -73,6 +73,7 @@ export async function processSale(
         sabor_1_nombre:  item.sabor_1?.nombre ?? null,
         sabor_2_nombre:  item.sabor_2?.nombre ?? null,
         precio_unitario: item.precio_unitario,
+        descuento_porcentaje: item.descuento_porcentaje || 0,
         cantidad:        item.cantidad,
         mitad_1:         ingMitad1,
         mitad_2:         ingMitad2,
@@ -80,8 +81,12 @@ export async function processSale(
       };
     });
 
-    // ── 4. Calcular totales con descuento ────────────────────────────────
-    const subtotal      = cart.reduce((acc, item) => acc + item.precio_unitario * item.cantidad, 0);
+    // ── 4. Calcular totales con descuento híbrido ────────────────────────
+    const subtotal = cart.reduce((acc, item) => {
+      const itemDesc = item.descuento_porcentaje || 0;
+      const baseTotal = item.precio_unitario * item.cantidad;
+      return acc + (baseTotal * (1 - itemDesc / 100));
+    }, 0);
     const descuentoAmt  = subtotal * (descuentoGlobal / 100);
     const totalFinal    = Math.round(subtotal - descuentoAmt);
 
