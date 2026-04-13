@@ -447,9 +447,3 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
     </div>
   );
 }
-     </div>
-
-      </div>
-    </div>
-  );
-}
