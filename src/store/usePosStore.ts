@@ -45,10 +45,6 @@ interface PosState {
   origenVenta: OrigenVenta | null;
   setOrigenVenta: (origen: OrigenVenta) => void;
 
-  // Descuento Global (% sobre el total de la orden)
-  descuentoGlobal: number; // 0–100
-  setDescuentoGlobal: (pct: number) => void;
-
   // ── PWA Install Prompt ───────────────────────────────
   // El evento se guarda aquí desde el PwaInstaller y se consume en el SettingsModal
   pwaInstallPrompt: BeforeInstallPromptEvent | null;
@@ -72,13 +68,10 @@ export const usePosStore = create<PosState>((set, get) => ({
   cart: [],
   isCartOpen: false,
   origenVenta: null,       // ← null hasta que el cajero seleccione
-  descuentoGlobal: 0,
   pwaInstallPrompt: null,
 
   setCartOpen: (open) => set({ isCartOpen: open }),
   setOrigenVenta: (origen) => set({ origenVenta: origen }),
-  setDescuentoGlobal: (pct) =>
-    set({ descuentoGlobal: Math.min(100, Math.max(0, pct)) }),
   setPwaInstallPrompt: (event) => set({ pwaInstallPrompt: event }),
 
   addToCart: (item) => {
@@ -104,21 +97,24 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   clearCart: () => {
-    set({ cart: [], descuentoGlobal: 0, origenVenta: null });
+    set({ cart: [], origenVenta: null });
   },
 
   getSubtotal: () => {
     const { cart } = get();
     return cart.reduce((total, item) => {
-      const itemDiscount = item.descuento_porcentaje || 0;
       const baseTotal = item.precio_unitario * item.cantidad;
-      return total + (baseTotal * (1 - itemDiscount / 100));
+      return total + baseTotal;
     }, 0);
   },
 
   getDescuentoAmount: () => {
-    const { getSubtotal, descuentoGlobal } = get();
-    return getSubtotal() * (descuentoGlobal / 100);
+    const { cart } = get();
+    return cart.reduce((totalDesc, item) => {
+      const itemDiscount = item.descuento_porcentaje || 0;
+      const baseTotal = item.precio_unitario * item.cantidad;
+      return totalDesc + (baseTotal * (itemDiscount / 100));
+    }, 0);
   },
 
   getTotal: () => {

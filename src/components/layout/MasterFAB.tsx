@@ -14,6 +14,7 @@ import {
   X,
   Pizza,
   ChefHat,
+  BarChart3,
 } from 'lucide-react';
 import { usePosStore } from '@/store/usePosStore';
 import { SettingsModal } from './SettingsModal';
@@ -21,6 +22,7 @@ import { SettingsModal } from './SettingsModal';
 // ─── Rutas del menú interno del FAB ─────────────────────────────────────────
 const NAV_ITEMS = [
   { label: 'Caja POS',    href: '/pos',        icon: Store           },
+  { label: 'Reportes',    href: '/reportes',    icon: BarChart3       },
   { label: 'Recetas',     href: '/sabores',     icon: ChefHat         },
   { label: 'Gramajes',    href: '/raciones',    icon: UtensilsCrossed },
   { label: 'Bodega',      href: '/inventario',  icon: Package         },

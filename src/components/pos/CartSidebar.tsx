@@ -21,8 +21,7 @@ const ORIGENES: {
   { value: 'DiDi',    label: 'DiDi',    icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white shadow-orange-200'  },
 ];
 
-// ─── Pills de descuento disponibles ─────────────────────────────────────────
-const DISCOUNT_PILLS = [0, 25, 50, 100];
+
 
 export function CartSidebar() {
   const {
@@ -30,12 +29,9 @@ export function CartSidebar() {
     removeFromCart, updateQuantity, clearCart,
     getSubtotal, getDescuentoAmount, getTotal, getCartItemCount,
     origenVenta, setOrigenVenta,
-    descuentoGlobal, setDescuentoGlobal,
   } = usePosStore();
 
   const [isPending, startTransition] = useTransition();
-  const [customDiscount, setCustomDiscount] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const itemCount       = getCartItemCount();
   const subtotal        = getSubtotal();
@@ -45,31 +41,19 @@ export function CartSidebar() {
   // El checkout se bloquea si no hay origen seleccionado o el carrito está vacío
   const canCheckout = cart.length > 0 && origenVenta !== null && !isPending;
 
-  const handleDiscountPill = (pct: number) => {
-    setDescuentoGlobal(pct);
-    setCustomDiscount('');
-    setShowCustomInput(false);
-  };
 
-  const handleCustomDiscountChange = (val: string) => {
-    setCustomDiscount(val);
-    const num = parseFloat(val);
-    if (!isNaN(num)) setDescuentoGlobal(num);
-  };
 
   const handleCheckout = () => {
     if (!canCheckout) return;
 
     startTransition(async () => {
       // origenVenta está garantizado no-null por canCheckout
-      const result = await processSale(cart, origenVenta!, descuentoGlobal);
+      const result = await processSale(cart, origenVenta!);
 
       if (result.success) {
         toast.success('✅ Venta procesada. Inventario actualizado.');
         clearCart();
         setCartOpen(false);
-        setCustomDiscount('');
-        setShowCustomInput(false);
       } else {
         toast.error(result.error || 'Error al procesar la venta.');
       }
@@ -250,79 +234,19 @@ export function CartSidebar() {
               </div>
             </div>
 
-            {/* ── DESCUENTO GLOBAL ── */}
-            <div className="px-5 pb-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest">
-                  Descuento Global
-                </p>
-                {descuentoGlobal > 0 && (
-                  <button
-                    onClick={() => { setDescuentoGlobal(0); setCustomDiscount(''); setShowCustomInput(false); }}
-                    className="text-[0.6rem] font-bold text-red-400 hover:text-red-500 flex items-center gap-0.5"
-                  >
-                    <X size={9} /> Quitar
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-1.5">
-                {DISCOUNT_PILLS.map((pct) => (
-                  <button
-                    key={pct}
-                    onClick={() => handleDiscountPill(pct)}
-                    className={`
-                      flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-200
-                      ${descuentoGlobal === pct && !showCustomInput
-                        ? 'bg-slate-800 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
-                    `}
-                  >
-                    {pct === 0 ? 'Sin desc.' : `${pct}%`}
-                  </button>
-                ))}
-                {/* Pill: Personalizado */}
-                <button
-                  onClick={() => setShowCustomInput((prev) => !prev)}
-                  className={`
-                    flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-200
-                    ${showCustomInput
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
-                  `}
-                >
-                  Pers.
-                </button>
-              </div>
-              {showCustomInput && (
-                <div className="flex items-center gap-2 mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-200 transition-all">
-                  <Tag size={13} className="text-orange-500 flex-shrink-0" />
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    autoFocus
-                    value={customDiscount}
-                    onChange={(e) => handleCustomDiscountChange(e.target.value)}
-                    placeholder="Ej. 15"
-                    className="flex-1 bg-transparent text-slate-800 font-bold text-sm outline-none placeholder:text-slate-400 placeholder:font-normal"
-                  />
-                  <span className="text-slate-400 font-bold text-sm">%</span>
-                </div>
-              )}
-            </div>
+
 
             {/* ── DESGLOSE DE PRECIOS ── */}
             {cart.length > 0 && (
               <div className="px-5 py-3 border-t border-slate-100 space-y-1.5">
                 <div className="flex justify-between text-xs text-slate-500">
-                  <span>Subtotal</span>
+                  <span>Subtotal orden</span>
                   <span className="font-semibold text-slate-700">${subtotal.toLocaleString()}</span>
                 </div>
-                {descuentoGlobal > 0 && (
+                {descuentoAmount > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="flex items-center gap-1 text-orange-600">
-                      <Tag size={10} /> Descuento ({descuentoGlobal}%)
+                      <Tag size={10} /> Descuento por items
                     </span>
                     <span className="font-bold text-orange-600">
                       -${Math.round(descuentoAmount).toLocaleString()}

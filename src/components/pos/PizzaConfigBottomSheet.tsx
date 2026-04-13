@@ -12,6 +12,7 @@ interface SheetProps {
   disponiblesToppings: Topping[];
   sabores: Sabor[];
 }
+const DISCOUNT_PILLS = [0, 25, 50, 100];
 
 export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesToppings, sabores }: SheetProps) {
   const addToCart = usePosStore((state) => state.addToCart);
@@ -24,6 +25,21 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const [activeTab, setActiveTab] = useState<'m1' | 'm2' | 'extras'>('m1');
   const [cantidad, setCantidad] = useState(1);
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState<number>(0);
+  const [customDiscount, setCustomDiscount] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const handleDiscountPill = (pct: number) => {
+    setDescuentoPorcentaje(pct);
+    setCustomDiscount('');
+    setShowCustomInput(false);
+  };
+
+  const handleCustomDiscountChange = (val: string) => {
+    setCustomDiscount(val);
+    const num = parseFloat(val);
+    if (!isNaN(num)) setDescuentoPorcentaje(num);
+    else setDescuentoPorcentaje(0);
+  };
 
 
   // Determinar precio base según tamaño y sabor
@@ -65,6 +81,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
   const extrasPrice = extras.length * 3000;
   const currentTotal = basePrice + extrasPrice;
   const totalWithMultiplier = currentTotal * cantidad;
+  const finalTotal = totalWithMultiplier * (1 - descuentoPorcentaje / 100);
 
   // Reset state on open
   useEffect(() => {
@@ -77,6 +94,8 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
       setActiveTab('m1');
       setCantidad(1);
       setDescuentoPorcentaje(0);
+      setCustomDiscount('');
+      setShowCustomInput(false);
     }
   }, [isOpen]);
 
@@ -267,29 +286,76 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
         </div>
 
         {/* Selector de Cantidad y Descuento */}
-        <div className="px-5 py-4 bg-white border-t border-slate-100 flex gap-4">
-          <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 max-w-full">
-               <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">-</button>
-               <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
-               <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">+</button>
+        <div className="px-5 py-4 bg-white border-t border-slate-100 flex flex-col gap-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cantidad</label>
+              <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden h-12 max-w-full">
+                 <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">-</button>
+                 <input type="number" min="1" value={cantidad} onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))} className="w-full h-full text-center bg-transparent font-bold text-slate-800 outline-none" />
+                 <button onClick={() => setCantidad(cantidad + 1)} className="w-12 h-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors focus:outline-none">+</button>
+              </div>
+            </div>
+            
+            <div className="flex-1">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block text-right">Promoción</label>
+              <div className="h-12 flex items-center justify-end">
+                 {descuentoPorcentaje > 0 ? (
+                   <span className="text-red-500 font-black flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-xl border border-red-100">
+                      -{descuentoPorcentaje}% Aplicado
+                   </span>
+                 ) : (
+                   <span className="text-slate-400 font-medium text-sm">Sin promociones</span>
+                 )}
+              </div>
             </div>
           </div>
           
-          <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block text-right">Desc. Promo</label>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 h-12 focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-200 transition-all">
-              <span className="text-orange-500 mr-2 font-black">%</span>
-              <input
-                type="number"
-                min="0" max="100"
-                value={descuentoPorcentaje || ''}
-                onChange={(e) => setDescuentoPorcentaje(parseInt(e.target.value) || 0)}
-                placeholder="0"
-                className="w-full bg-transparent font-bold text-slate-800 outline-none text-right"
-              />
+          <div className="w-full">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Descuento Especial (%)</label>
+            <div className="flex gap-1.5">
+              {DISCOUNT_PILLS.map((pct) => (
+                <button
+                  key={pct}
+                  onClick={() => handleDiscountPill(pct)}
+                  className={`
+                    flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200
+                    ${descuentoPorcentaje === pct && !showCustomInput
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                  `}
+                >
+                  {pct === 0 ? 'Normal' : `-${pct}%`}
+                </button>
+              ))}
+              <button
+                onClick={() => setShowCustomInput((prev) => !prev)}
+                className={`
+                  flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200
+                  ${showCustomInput
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}
+                `}
+              >
+                Pers.
+              </button>
             </div>
+            {showCustomInput && (
+              <div className="flex items-center gap-2 mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 h-12 focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-200 transition-all">
+                <span className="text-orange-500 font-black flex-shrink-0">%</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  autoFocus
+                  value={customDiscount}
+                  onChange={(e) => handleCustomDiscountChange(e.target.value)}
+                  placeholder="Ej. 15"
+                  className="flex-1 bg-transparent text-slate-800 font-bold text-sm outline-none placeholder:text-slate-400 placeholder:font-normal"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -301,7 +367,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
           >
             <span>Agregar a la Orden</span>
             <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm tracking-wide font-black">
-              ${totalWithMultiplier.toLocaleString()}
+              ${Math.round(finalTotal).toLocaleString()}
             </span>
           </button>
         </div>

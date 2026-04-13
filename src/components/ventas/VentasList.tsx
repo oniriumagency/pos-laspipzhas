@@ -284,11 +284,13 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                     {obtenerBadge(venta.origen_venta)}
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700 uppercase tracking-widest">Pagado</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{fechaBonita}</span>
-                    <span className="text-gray-300">•</span>
-                    <span className="shrink-0 truncate" title={resumen}>{resumen}</span>
+                  <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm text-gray-500 font-medium mt-1">
+                    <div className="flex items-center gap-1.5 text-gray-400">
+                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="text-gray-600 whitespace-nowrap">{fechaBonita}</span>
+                    </div>
+                    <span className="text-gray-300 hidden sm:inline">•</span>
+                    <span className="text-[0.8rem] line-clamp-2 sm:truncate basis-full sm:basis-auto" title={resumen}>{resumen}</span>
                   </div>
                 </div>
               </div>

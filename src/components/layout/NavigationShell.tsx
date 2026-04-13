@@ -3,10 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, Package, ShoppingBasket, Pizza, Receipt, UtensilsCrossed, ChefHat } from 'lucide-react';
+import { Store, Package, ShoppingBasket, Pizza, Receipt, UtensilsCrossed, ChefHat, BarChart3 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { label: 'Caja POS',    href: '/pos',        icon: Store           },
+  { label: 'Reportes',    href: '/reportes',    icon: BarChart3       },
   { label: 'Ventas',      href: '/ventas',      icon: Receipt         },
   { label: 'Recetas',     href: '/sabores',     icon: ChefHat         },
   { label: 'Gramajes',    href: '/raciones',    icon: UtensilsCrossed },

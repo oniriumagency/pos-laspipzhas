@@ -10,7 +10,7 @@ import { CartItem } from '@/store/usePosStore';
  * Orquesta la venta:
  *  1. Verifica sesión activa.
  *  2. Resuelve los ingredientes de cada sabor desde la tabla pivot.
- *  3. Calcula el total con el descuento global aplicado.
+ *  3. Calcula el total con los descuentos por ítem aplicados.
  *  4. Llama al RPC `procesar_venta` de forma atómica.
  *  5. Invalida el caché de Next.js para las vistas de inventario y ventas.
  *
@@ -20,12 +20,10 @@ import { CartItem } from '@/store/usePosStore';
  *
  * @param cart            - Items del carrito Zustand
  * @param origenVenta     - Canal: 'propio' | 'rappi' | 'didi'
- * @param descuentoGlobal - Porcentaje de descuento global a toda la orden (0–100)
  */
 export async function processSale(
   cart: CartItem[],
-  origenVenta: string = 'Propio',
-  descuentoGlobal: number = 0
+  origenVenta: string = 'Propio'
 ) {
   try {
     const supabase = await createClient();
@@ -81,14 +79,13 @@ export async function processSale(
       };
     });
 
-    // ── 4. Calcular totales con descuento híbrido ────────────────────────
+    // ── 4. Calcular totales con descuento por ítem ───────────────────────
     const subtotal = cart.reduce((acc, item) => {
       const itemDesc = item.descuento_porcentaje || 0;
       const baseTotal = item.precio_unitario * item.cantidad;
       return acc + (baseTotal * (1 - itemDesc / 100));
     }, 0);
-    const descuentoAmt  = subtotal * (descuentoGlobal / 100);
-    const totalFinal    = Math.round(subtotal - descuentoAmt);
+    const totalFinal = Math.round(subtotal);
 
     // ── 5. Ejecutar RPC atómico ──────────────────────────────────────────
     // IMPORTANTE: la firma del RPC usa p_user_id → lo guarda como `created_by`
@@ -98,7 +95,7 @@ export async function processSale(
       p_total_precio:     totalFinal,
       p_user_id:          user.id,
       p_origen_venta:     origenVenta,
-      p_descuento_global: descuentoGlobal,
+      p_descuento_global: 0,
     });
 
     if (error) {
