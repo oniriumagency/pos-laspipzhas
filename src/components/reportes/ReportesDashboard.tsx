@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
-import { Store, Bike, UtensilsCrossed, Calendar, TrendingUp, Receipt, Tag, Trophy, Filter } from 'lucide-react';
+import { Store, Bike, UtensilsCrossed, Calendar, TrendingUp, Receipt, Tag, Trophy, Filter, Download } from 'lucide-react';
 
 interface Venta {
   id: string;
@@ -147,6 +147,72 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
     return saboresSorted;
   }, [ventasFiltradas]);
 
+  // Exportar a CSV
+  const exportarCSV = () => {
+    if (ventasFiltradas.length === 0) return;
+
+    const BOM = '\uFEFF';
+    const cabeceras = ['Fecha', 'Canal', 'Ingresos', 'Descuento Aplicado', 'Detalle de la Orden'];
+    
+    // Función auxiliar para detalle de orden sin JSON anidados
+    const procesarDetalle = (cartPayload?: any[]) => {
+      if (!cartPayload || !Array.isArray(cartPayload)) return 'Sin detalle';
+      return cartPayload.map(item => {
+        const cantidad = item.cantidad || 1;
+        const tamano = item.tamano_nombre || '';
+        const s1 = item.sabor_1_nombre;
+        const s2 = item.sabor_2_nombre;
+        let sabor = s1 || 'Pizza';
+        if (s1 && s2) sabor = `${s1} y ${s2}`;
+        return `${cantidad}x ${sabor} ${tamano}`.trim();
+      }).join(', ');
+    };
+
+    const filas = ventasFiltradas.map(v => {
+      // Formatear Fecha DD/MM/YYYY HH:MM
+      const fechaObj = new Date(v.created_at);
+      const dia = String(fechaObj.getDate()).padStart(2, '0');
+      const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+      const anio = fechaObj.getFullYear();
+      const horas = String(fechaObj.getHours()).padStart(2, '0');
+      const mins = String(fechaObj.getMinutes()).padStart(2, '0');
+      const fechaFmt = `${dia}/${mes}/${anio} ${horas}:${mins}`;
+
+      // Calcular descuento aplicado a esta venta
+      let descuentoVenta = 0;
+      if (v.cart_payload && Array.isArray(v.cart_payload)) {
+        v.cart_payload.forEach((item: any) => {
+          if (item.descuento_porcentaje) {
+            const descuentoPorItem = (item.precio_unitario * (item.descuento_porcentaje / 100)) * (item.cantidad || 1);
+            descuentoVenta += descuentoPorItem;
+          }
+        });
+      }
+
+      const detalle = procesarDetalle(v.cart_payload);
+      
+      // Escapar campos para CSV
+      const fila = [
+        `"${fechaFmt}"`,
+        `"${v.origen_venta}"`,
+        v.total_precio,
+        descuentoVenta,
+        `"${detalle.replace(/"/g, '""')}"`
+      ];
+      return fila.join(',');
+    });
+
+    const contenidoCSV = [cabeceras.join(','), ...filas].join('\n');
+    const blob = new Blob([BOM + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Reporte_Ventas_${rangoFecha}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Gráfico 3: Evolución de Ingresos
   const dataEvolucion = useMemo(() => {
     const agrupado: Record<string, { date: string; Propio: number; Rappi: number; DiDi: number }> = {};
@@ -249,6 +315,17 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
               );
             })}
           </div>
+          
+          <div className="hidden xl:block w-px h-8 bg-gray-200 mx-1"></div>
+          
+          <button
+            onClick={exportarCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold border-2 border-gray-200 text-gray-600 hover:border-slate-800 hover:text-slate-800 transition-all shadow-sm"
+            title="Exportar ventas filtradas a CSV"
+          >
+            <Download size={16} strokeWidth={2.5} />
+            Exportar CSV
+          </button>
         </div>
 
       </div>
