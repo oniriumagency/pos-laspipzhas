@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react';
 import { usePosStore, OrigenVenta } from '@/store/usePosStore';
 import {
-  Trash2, Plus, Minus, ShoppingBag, Receipt, X, Tag,
-  Store, Bike, UtensilsCrossed, AlertCircle,
+  Trash2, Plus, Minus, ShoppingBag, Receipt, X, AlertCircle, Tag,
+  Store, Bike, UtensilsCrossed, Beer, Grape, Droplets,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processSale } from '@/server/actions/orders';
+import { CategoriaProducto } from '@/server/actions/productos';
+
 
 // ─── Configuración de los 3 orígenes válidos ────────────────────────────────
 const ORIGENES: {
@@ -119,17 +121,32 @@ export function CartSidebar() {
               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center mt-8 opacity-60">
                 <Receipt size={56} className="mb-3 text-slate-300" />
                 <p className="font-semibold text-slate-500">Tu orden está vacía</p>
-                <p className="text-xs mt-1">Selecciona una pizza para empezar.</p>
+                <p className="text-xs mt-1">Selecciona una pizza o bebida para empezar.</p>
               </div>
             ) : (
-              cart.map((item) => (
+              cart.map((item) => {
+                // ── Íconos de categoría para productos ─────────────────────
+                const ICONO_CATEGORIA: Record<CategoriaProducto, React.ElementType> = {
+                  gaseosa: Grape,
+                  cerveza: Beer,
+                  bebida:  Droplets,
+                };
+
+                return (
                 <div
                   key={item.id}
                   className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-2.5 hover:shadow-md hover:border-orange-100 transition-all"
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-bold text-slate-800">Pizza {item.tamano_nombre}</h4>
+                      {/* ── PIZZA ── */}
+                      {item.tipo === 'pizza' && (
+                        <h4 className="font-bold text-slate-800">Pizza {item.tamano_nombre}</h4>
+                      )}
+                      {/* ── PRODUCTO ── */}
+                      {item.tipo === 'producto' && (
+                        <h4 className="font-bold text-slate-800">{item.producto_nombre}</h4>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-orange-500 font-bold text-sm">
                           ${item.precio_unitario.toLocaleString()} c/u
@@ -149,21 +166,41 @@ export function CartSidebar() {
                     </button>
                   </div>
 
+                  {/* Detalle según tipo */}
                   <div className="text-xs text-slate-600 bg-slate-50 rounded-xl p-2.5 border border-slate-100/80 space-y-1">
-                    {item.es_mitades ? (
+                    {/* Pizza: muestra sabores y extras */}
+                    {item.tipo === 'pizza' && (
                       <>
-                        <p><span className="font-semibold text-slate-700">M1:</span> {item.sabor_1?.nombre}</p>
-                        <p><span className="font-semibold text-slate-700">M2:</span> {item.sabor_2?.nombre}</p>
+                        {item.es_mitades ? (
+                          <>
+                            <p><span className="font-semibold text-slate-700">M1:</span> {item.sabor_1?.nombre}</p>
+                            <p><span className="font-semibold text-slate-700">M2:</span> {item.sabor_2?.nombre}</p>
+                          </>
+                        ) : (
+                          <p><span className="font-semibold text-slate-700">Sabor:</span> {item.sabor_1?.nombre}</p>
+                        )}
+                        {(item.extras?.length ?? 0) > 0 && (
+                          <p className="text-orange-600 pt-1 border-t border-slate-200">
+                            <span className="font-semibold">Extras:</span>{' '}
+                            {item.extras!.map((t) => t.nombre).join(', ')}
+                          </p>
+                        )}
                       </>
-                    ) : (
-                      <p><span className="font-semibold text-slate-700">Sabor:</span> {item.sabor_1?.nombre}</p>
                     )}
-                    {item.extras.length > 0 && (
-                      <p className="text-orange-600 pt-1 border-t border-slate-200">
-                        <span className="font-semibold">Extras:</span>{' '}
-                        {item.extras.map((t) => t.nombre).join(', ')}
-                      </p>
-                    )}
+                    {/* Producto: muestra ícono + categoría */}
+                    {item.tipo === 'producto' && (() => {
+                      const categoriaProducto = (
+                        Object.entries(ICONO_CATEGORIA).find(([, Ic]) =>
+                          Ic === Beer ? item.producto_nombre?.toLowerCase().includes('agua') : false
+                        )?.[0] as CategoriaProducto | undefined
+                      );
+                      // El ícono lo determinamos directamente desde el producto.categoria
+                      return (
+                        <p className="text-slate-500">
+                          Producto agregado a la orden
+                        </p>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -187,7 +224,8 @@ export function CartSidebar() {
                     </span>
                   </div>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
 

@@ -17,17 +17,27 @@ export type Sabor = {
 // Estrictamente los 3 orígenes válidos para el negocio
 export type OrigenVenta = 'Propio' | 'Rappi' | 'DiDi';
 
+// Discriminador de tipo de item en el carrito
+export type TipoItemCarrito = 'pizza' | 'producto';
+
 export type CartItem = {
   id: string;
-  tamano_id: string;
-  tamano_nombre: string;
+  tipo: TipoItemCarrito;
   precio_unitario: number;
   descuento_porcentaje?: number; // Descuento individual por ítem (0-100)
-  es_mitades: boolean;
+  cantidad: number;
+
+  // ── Campos exclusivos para tipo = 'pizza' ──────────────────────────────────
+  tamano_id?: string;
+  tamano_nombre?: string;
+  es_mitades?: boolean;
   sabor_1?: Sabor;
   sabor_2?: Sabor;
-  extras: Topping[];
-  cantidad: number;
+  extras?: Topping[];
+
+  // ── Campos exclusivos para tipo = 'producto' ───────────────────────────────
+  producto_id?: string;
+  producto_nombre?: string;
 };
 
 interface PosState {
@@ -40,17 +50,17 @@ interface PosState {
   updateQuantity: (itemId: string, cantidad: number) => void;
   clearCart: () => void;
 
-  // ── Configuración de la Venta ─────────────────────────
+  // ── Configuración de la Venta ─────────────────────────────────────────────
   // null = sin seleccionar (bloquea el checkout)
   origenVenta: OrigenVenta | null;
   setOrigenVenta: (origen: OrigenVenta) => void;
 
-  // ── PWA Install Prompt ───────────────────────────────
+  // ── PWA Install Prompt ───────────────────────────────────────────────────
   // El evento se guarda aquí desde el PwaInstaller y se consume en el SettingsModal
   pwaInstallPrompt: BeforeInstallPromptEvent | null;
   setPwaInstallPrompt: (event: BeforeInstallPromptEvent | null) => void;
 
-  // ── Selectores Derivados ─────────────────────────────
+  // ── Selectores Derivados ─────────────────────────────────────────────────
   getSubtotal: () => number;
   getDescuentoAmount: () => number;
   getTotal: () => number;

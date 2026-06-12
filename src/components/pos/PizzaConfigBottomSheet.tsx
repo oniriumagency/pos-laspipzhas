@@ -124,6 +124,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
     }
 
     addToCart({
+      tipo: 'pizza',
       tamano_id: tamano.id,
       tamano_nombre: tamano.nombre,
       precio_unitario: currentTotal,

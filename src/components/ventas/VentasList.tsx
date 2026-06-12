@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   Trash2, ChevronDown, ChevronUp, Clock, DollarSign, Pizza,
   Package2, Pencil, X, Plus, Minus, Store, Bike, UtensilsCrossed,
+  Beer,
 } from 'lucide-react';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -81,24 +82,41 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
   };
 
   // ─── Construir resumen inteligente del cart_payload ────────────────────────
+  // Separa pizzas de productos para el texto de resumen en la lista
   const construirResumen = (cartPayload: any[]) => {
     let totalPizzas = 0;
-    const detalles: string[] = [];
+    let totalProductos = 0;
+    const detallesPizzas: string[] = [];
+
     cartPayload.forEach(item => {
       const cantidad = item.cantidad || 1;
+
+      // Los productos tienen tamano_id = null en el payload
+      if (!item.tamano_id) {
+        totalProductos += cantidad;
+        return;
+      }
+
       totalPizzas += cantidad;
       const sabor1 = item.sabor_1_nombre;
       const sabor2 = item.sabor_2_nombre;
       let etiquetaSabor = sabor1 || 'Pizza';
       if (sabor1 && sabor2) {
-        // Reducimos el nombre a la primera palabra para mantenerlo compacto
         etiquetaSabor = `${sabor1.split(' ')[0]}/${sabor2.split(' ')[0]}`;
       } else if (sabor1) {
         etiquetaSabor = sabor1.split(' ')[0];
       }
-      detalles.push(`${cantidad} ${etiquetaSabor}`);
+      detallesPizzas.push(`${cantidad} ${etiquetaSabor}`);
     });
-    return `${totalPizzas} Pizza${totalPizzas !== 1 ? 's' : ''} (${detalles.join(', ')})`;
+
+    const partes: string[] = [];
+    if (totalPizzas > 0) {
+      partes.push(`${totalPizzas} Pizza${totalPizzas !== 1 ? 's' : ''} (${detallesPizzas.join(', ')})`);
+    }
+    if (totalProductos > 0) {
+      partes.push(`${totalProductos} Producto${totalProductos !== 1 ? 's' : ''}`);
+    }
+    return partes.length > 0 ? partes.join(' + ') : 'Venta vacía';
   };
 
   // ─── Badge visual de origen con colores de marca ──────────────────────────
@@ -390,24 +408,54 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                 {/* Lista de Items Comprados */}
                 <div className="flex-1">
                   <h4 className="text-[0.65rem] font-black uppercase tracking-[0.15em] text-gray-500 mb-3 flex items-center gap-2">
-                    <Pizza className="w-3.5 h-3.5" /> Pizzas Vendidas
+                    <Pizza className="w-3.5 h-3.5" /> Items Vendidos
                   </h4>
                   <ul className="space-y-2">
-                    {venta.cart_payload.map((item: any, indice: number) => {
-                      // Construir etiqueta descriptiva del payload enriquecido
+                     {venta.cart_payload.map((item: any, indice: number) => {
+                      // Los productos tienen tamano_id null y producto_nombre definido
+                      const esProducto = !item.tamano_id && item.producto_nombre;
+
+                      if (esProducto) {
+                        return (
+                          <li key={indice} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center gap-3">
+                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                              <Beer className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                              <span className="font-bold text-gray-800 block text-sm">
+                                {item.cantidad}x {item.producto_nombre}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0">
+                              {item.descuento_porcentaje ? (
+                                <>
+                                  <span className="line-through text-[0.65rem] text-gray-400 font-semibold mb-0.5">${(item.precio_unitario * item.cantidad).toLocaleString('es-ES')}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="bg-orange-100 text-orange-600 text-[0.6rem] font-bold px-1 rounded">- {item.descuento_porcentaje}%</span>
+                                    <span className="text-sm font-black text-gray-800">${((item.precio_unitario * (1 - item.descuento_porcentaje / 100)) * item.cantidad).toLocaleString('es-ES')}</span>
+                                  </div>
+                                </>
+                              ) : (
+                                item.precio_unitario && (
+                                  <span className="text-sm font-black text-gray-800">
+                                    ${(item.precio_unitario * item.cantidad).toLocaleString('es-ES')}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </li>
+                        );
+                      }
+
+                      // Item tipo pizza (lógica original)
                       const etiquetaTamano = item.tamano_nombre || 'Pizza';
                       const sabor1 = item.sabor_1_nombre;
                       const sabor2 = item.sabor_2_nombre;
-
                       let etiquetaSabor = '';
                       if (sabor1 && sabor2) {
                         etiquetaSabor = `${sabor1} / ${sabor2}`;
                       } else if (sabor1) {
                         etiquetaSabor = sabor1;
                       }
-
                       const precioUnitario = item.precio_unitario;
-
                       return (
                         <li key={indice} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center gap-3">
                           <div className="min-w-0 flex-1">

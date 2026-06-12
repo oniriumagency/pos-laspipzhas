@@ -6,19 +6,19 @@ import { Topping, Sabor } from '@/store/usePosStore';
 export default async function POSPage() {
   const supabase = await createClient();
 
-  // Fetch tamanos de pizza
+  // Fetch tamaños de pizza
   const { data: tamanos } = await supabase
     .from('tamanos_pizza')
     .select('*')
     .order('created_at', { ascending: true });
-    
+
   // Fetch sabores
   const { data: sabores } = await supabase
     .from('sabores')
     .select('*')
     .order('nombre', { ascending: true });
 
-  // Fetch toppings disponibles para extras
+  // Fetch toppings disponibles para extras (excluye insumos base y empaques)
   const { data: ingredientes } = await supabase
     .from('ingredientes')
     .select('id, nombre')
@@ -28,9 +28,17 @@ export default async function POSPage() {
     .neq('nombre', 'Cajas Mediana')
     .neq('nombre', 'Servilletas');
 
+  // Fetch productos activos (gaseosas, cervezas, bebidas)
+  const { data: productos } = await supabase
+    .from('productos')
+    .select('id, nombre, precio, categoria')
+    .eq('activo', true)
+    .order('categoria', { ascending: true })
+    .order('nombre', { ascending: true });
+
   const toppings: Topping[] = (ingredientes || []).map(ing => ({
     ingrediente_id: ing.id,
-    nombre: ing.nombre
+    nombre: ing.nombre,
   }));
 
   const saboresList: Sabor[] = sabores || [];
@@ -42,13 +50,18 @@ export default async function POSPage() {
         <header className="px-6 py-5 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-200 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Nueva Venta</h1>
-            <p className="text-sm text-slate-500 mt-1">Selecciona el tamaño y configura la pizza.</p>
+            <p className="text-sm text-slate-500 mt-1">Selecciona el tamaño y configura la pizza, o agrega bebidas.</p>
           </div>
           <CartToggle />
         </header>
 
         <div className="p-6">
-          <MenuDisplay tamanos={tamanos || []} toppings={toppings} sabores={saboresList} />
+          <MenuDisplay
+            tamanos={tamanos || []}
+            toppings={toppings}
+            sabores={saboresList}
+            productos={productos || []}
+          />
         </div>
       </main>
     </div>
