@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePosStore } from '@/store/usePosStore';
-import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape, Pizza } from 'lucide-react';
 import { toast } from 'sonner';
 import { CategoriaProducto } from '@/server/actions/productos';
 
@@ -24,6 +24,14 @@ const ESTILOS_CATEGORIA: Record<CategoriaProducto, {
   colorBadge: string;
   etiqueta: string;
 }> = {
+  pizza: {
+    icono: Pizza,
+    colorIcono: 'text-orange-500',
+    colorFondo: 'bg-orange-50',
+    colorBorde: 'border-orange-100',
+    colorBadge: 'bg-orange-100 text-orange-600',
+    etiqueta: 'Pizza',
+  },
   gaseosa: {
     icono: Grape,
     colorIcono: 'text-purple-500',
