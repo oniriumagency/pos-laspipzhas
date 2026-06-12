@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { usePosStore, OrigenVenta } from '@/store/usePosStore';
 import {
   Trash2, Plus, Minus, ShoppingBag, Receipt, X, AlertCircle, Tag,
-  Store, Bike, UtensilsCrossed, Beer, Grape, Droplets,
+  Store, Bike, UtensilsCrossed, Beer, Grape, Droplets, Pizza
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processSale } from '@/server/actions/orders';
@@ -133,6 +133,7 @@ export function CartSidebar() {
               cart.map((item) => {
                 // ── Íconos de categoría para productos ─────────────────────
                 const ICONO_CATEGORIA: Record<CategoriaProducto, React.ElementType> = {
+                  pizza: Pizza,
                   gaseosa: Grape,
                   cerveza: Beer,
                   bebida:  Droplets,
