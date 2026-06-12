@@ -27,18 +27,24 @@ const ORIGENES: {
 
 export function CartSidebar() {
   const {
-    cart, isCartOpen, setCartOpen,
+    cuentas, cuentaActivaId, isCartOpen, setCartOpen,
     removeFromCart, updateQuantity, clearCart,
-    getSubtotal, getDescuentoAmount, getTotal, getCartItemCount,
-    origenVenta, setOrigenVenta,
+    setOrigenVenta, cerrarCuenta,
   } = usePosStore();
+
+  const cuenta = cuentas.find(c => c.id === cuentaActivaId);
+  const cart = cuenta?.cart || [];
+  const origenVenta = cuenta?.origenVenta || null;
 
   const [isPending, startTransition] = useTransition();
 
-  const itemCount       = getCartItemCount();
-  const subtotal        = getSubtotal();
-  const descuentoAmount = getDescuentoAmount();
-  const total           = getTotal();
+  const itemCount = cart.reduce((count, item) => count + item.cantidad, 0);
+  const subtotal = cart.reduce((total, item) => total + (item.precio_unitario * item.cantidad), 0);
+  const descuentoAmount = cart.reduce((totalDesc, item) => {
+    const base = item.precio_unitario * item.cantidad;
+    return totalDesc + (base * ((item.descuento_porcentaje || 0) / 100));
+  }, 0);
+  const total = subtotal - descuentoAmount;
 
   // El checkout se bloquea si no hay origen seleccionado o el carrito está vacío
   const canCheckout = cart.length > 0 && origenVenta !== null && !isPending;
@@ -46,7 +52,7 @@ export function CartSidebar() {
 
 
   const handleCheckout = () => {
-    if (!canCheckout) return;
+    if (!canCheckout || !cuenta) return;
 
     startTransition(async () => {
       // origenVenta está garantizado no-null por canCheckout
@@ -54,7 +60,7 @@ export function CartSidebar() {
 
       if (result.success) {
         toast.success('✅ Venta procesada. Inventario actualizado.');
-        clearCart();
+        cerrarCuenta(cuenta.id);
         setCartOpen(false);
       } else {
         toast.error(result.error || 'Error al procesar la venta.');
@@ -229,8 +235,14 @@ export function CartSidebar() {
             )}
           </div>
 
-          {/* ── Panel de Configuración de Venta + Checkout ── */}
+            {/* ── Panel de Configuración de Venta + Checkout ── */}
           <div className="flex-shrink-0 bg-white border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+            
+            {/* ── INFO DE CUENTA ── */}
+            <div className="px-5 pt-4 pb-2 border-b border-slate-100">
+              <p className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest mb-1">Cuenta Actual</p>
+              <h3 className="font-bold text-slate-800">{cuenta?.nombre || 'Sin nombre'}</h3>
+            </div>
 
             {/* ── ORIGEN DE VENTA ── */}
             <div className="px-5 pt-4 pb-3">

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { MenuDisplay } from '@/components/pos/MenuDisplay';
-import { CartToggle } from '@/components/pos/CartToggle';
+import { PosViewManager } from '@/components/pos/PosViewManager';
 import { Topping, Sabor } from '@/store/usePosStore';
 
 export default async function POSPage() {
@@ -44,26 +43,11 @@ export default async function POSPage() {
   const saboresList: Sabor[] = sabores || [];
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden relative">
-      {/* Contenido Principal (Grill de Productos) */}
-      <main className="flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300">
-        <header className="px-6 py-5 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-200 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Nueva Venta</h1>
-            <p className="text-sm text-slate-500 mt-1">Selecciona el tamaño y configura la pizza, o agrega bebidas.</p>
-          </div>
-          <CartToggle />
-        </header>
-
-        <div className="p-6">
-          <MenuDisplay
-            tamanos={tamanos || []}
-            toppings={toppings}
-            sabores={saboresList}
-            productos={productos || []}
-          />
-        </div>
-      </main>
-    </div>
+    <PosViewManager
+      tamanos={tamanos || []}
+      toppings={toppings}
+      sabores={saboresList}
+      productos={productos || []}
+    />
   );
 }

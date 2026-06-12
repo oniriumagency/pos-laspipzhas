@@ -11,13 +11,14 @@ import {
 } from '@/server/actions/productos';
 import {
   PlusCircle, Pencil, Trash2, RotateCcw, X, Save,
-  Beer, Grape, Droplets, Package,
+  Beer, Grape, Droplets, Package, Pizza,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Configuración de categorías ─────────────────────────────────────────────
 
 const CATEGORIAS: { valor: CategoriaProducto; etiqueta: string; icono: React.ElementType; color: string }[] = [
+  { valor: 'pizza',   etiqueta: 'Pizza',   icono: Pizza,    color: 'text-orange-500 bg-orange-50' },
   { valor: 'gaseosa', etiqueta: 'Gaseosa', icono: Grape,    color: 'text-purple-500 bg-purple-50' },
   { valor: 'cerveza', etiqueta: 'Cerveza', icono: Beer,     color: 'text-amber-500 bg-amber-50'   },
   { valor: 'bebida',  etiqueta: 'Bebida',  icono: Droplets, color: 'text-cyan-500 bg-cyan-50'     },

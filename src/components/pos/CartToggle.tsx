@@ -4,8 +4,9 @@ import { usePosStore } from '@/store/usePosStore';
 import { ShoppingBag } from 'lucide-react';
 
 export function CartToggle() {
-  const { getCartItemCount, setCartOpen } = usePosStore();
-  const itemCount = getCartItemCount();
+  const { cuentas, cuentaActivaId, setCartOpen } = usePosStore();
+  const cuentaActiva = cuentas.find(c => c.id === cuentaActivaId);
+  const itemCount = cuentaActiva?.cart.reduce((count, item) => count + item.cantidad, 0) || 0;
 
   return (
     <button 

@@ -40,9 +40,24 @@ export type CartItem = {
   producto_nombre?: string;
 };
 
-interface PosState {
-  // Carrito
+export type Cuenta = {
+  id: string;
+  nombre: string;
+  origenVenta: OrigenVenta | null;
   cart: CartItem[];
+  createdAt: string;
+};
+
+interface PosState {
+  // ── Cuentas ─────────────────────────────────────────────────────────────
+  cuentas: Cuenta[];
+  cuentaActivaId: string | null;
+  abrirCuenta: (nombre: string, origen: OrigenVenta) => void;
+  cerrarCuenta: (id: string) => void;
+  setCuentaActiva: (id: string | null) => void;
+  getCuentaActiva: () => Cuenta | undefined;
+
+  // ── Carrito (aplica a la cuenta activa) ─────────────────────────────────
   isCartOpen: boolean;
   setCartOpen: (open: boolean) => void;
   addToCart: (item: Omit<CartItem, 'id'>) => void;
@@ -50,17 +65,14 @@ interface PosState {
   updateQuantity: (itemId: string, cantidad: number) => void;
   clearCart: () => void;
 
-  // ── Configuración de la Venta ─────────────────────────────────────────────
-  // null = sin seleccionar (bloquea el checkout)
-  origenVenta: OrigenVenta | null;
+  // ── Configuración de la Venta (cuenta activa) ───────────────────────────
   setOrigenVenta: (origen: OrigenVenta) => void;
 
   // ── PWA Install Prompt ───────────────────────────────────────────────────
-  // El evento se guarda aquí desde el PwaInstaller y se consume en el SettingsModal
   pwaInstallPrompt: BeforeInstallPromptEvent | null;
   setPwaInstallPrompt: (event: BeforeInstallPromptEvent | null) => void;
 
-  // ── Selectores Derivados ─────────────────────────────────────────────────
+  // ── Selectores Derivados (leídos desde la cuenta activa) ────────────────
   getSubtotal: () => number;
   getDescuentoAmount: () => number;
   getTotal: () => number;
@@ -75,55 +87,128 @@ export interface BeforeInstallPromptEvent extends Event {
 }
 
 export const usePosStore = create<PosState>((set, get) => ({
-  cart: [],
+  cuentas: [],
+  cuentaActivaId: null,
   isCartOpen: false,
-  origenVenta: null,       // ← null hasta que el cajero seleccione
   pwaInstallPrompt: null,
 
-  setCartOpen: (open) => set({ isCartOpen: open }),
-  setOrigenVenta: (origen) => set({ origenVenta: origen }),
-  setPwaInstallPrompt: (event) => set({ pwaInstallPrompt: event }),
+  getCuentaActiva: () => {
+    const { cuentas, cuentaActivaId } = get();
+    return cuentas.find((c) => c.id === cuentaActivaId);
+  },
 
-  addToCart: (item) => {
+  abrirCuenta: (nombre, origen) => {
     const id =
       typeof crypto !== 'undefined'
         ? crypto.randomUUID()
         : Math.random().toString(36).substring(7);
-    set((state) => ({ cart: [...state.cart, { ...item, id }] }));
+    const nuevaCuenta: Cuenta = {
+      id,
+      nombre,
+      origenVenta: origen,
+      cart: [],
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({ cuentas: [...state.cuentas, nuevaCuenta], cuentaActivaId: id }));
+  },
+
+  cerrarCuenta: (id) => {
+    set((state) => ({
+      cuentas: state.cuentas.filter((c) => c.id !== id),
+      cuentaActivaId: state.cuentaActivaId === id ? null : state.cuentaActivaId,
+    }));
+  },
+
+  setCuentaActiva: (id) => set({ cuentaActivaId: id }),
+
+  setCartOpen: (open) => set({ isCartOpen: open }),
+
+  setOrigenVenta: (origen) => {
+    set((state) => {
+      if (!state.cuentaActivaId) return state;
+      return {
+        cuentas: state.cuentas.map((c) =>
+          c.id === state.cuentaActivaId ? { ...c, origenVenta: origen } : c
+        ),
+      };
+    });
+  },
+
+  setPwaInstallPrompt: (event) => set({ pwaInstallPrompt: event }),
+
+  addToCart: (item) => {
+    set((state) => {
+      if (!state.cuentaActivaId) return state;
+      const id =
+        typeof crypto !== 'undefined'
+          ? crypto.randomUUID()
+          : Math.random().toString(36).substring(7);
+      return {
+        cuentas: state.cuentas.map((c) =>
+          c.id === state.cuentaActivaId ? { ...c, cart: [...c.cart, { ...item, id }] } : c
+        ),
+      };
+    });
   },
 
   removeFromCart: (itemId) => {
-    set((state) => ({
-      cart: state.cart.filter((item) => item.id !== itemId),
-    }));
+    set((state) => {
+      if (!state.cuentaActivaId) return state;
+      return {
+        cuentas: state.cuentas.map((c) =>
+          c.id === state.cuentaActivaId
+            ? { ...c, cart: c.cart.filter((i) => i.id !== itemId) }
+            : c
+        ),
+      };
+    });
   },
 
   updateQuantity: (itemId, cantidad) => {
-    set((state) => ({
-      cart: state.cart.map((item) =>
-        item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
-      ),
-    }));
+    set((state) => {
+      if (!state.cuentaActivaId) return state;
+      return {
+        cuentas: state.cuentas.map((c) =>
+          c.id === state.cuentaActivaId
+            ? {
+                ...c,
+                cart: c.cart.map((item) =>
+                  item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
+                ),
+              }
+            : c
+        ),
+      };
+    });
   },
 
   clearCart: () => {
-    set({ cart: [], origenVenta: null });
+    set((state) => {
+      if (!state.cuentaActivaId) return state;
+      return {
+        cuentas: state.cuentas.map((c) =>
+          c.id === state.cuentaActivaId ? { ...c, cart: [] } : c
+        ),
+      };
+    });
   },
 
   getSubtotal: () => {
-    const { cart } = get();
-    return cart.reduce((total, item) => {
+    const cuenta = get().getCuentaActiva();
+    if (!cuenta) return 0;
+    return cuenta.cart.reduce((total, item) => {
       const baseTotal = item.precio_unitario * item.cantidad;
       return total + baseTotal;
     }, 0);
   },
 
   getDescuentoAmount: () => {
-    const { cart } = get();
-    return cart.reduce((totalDesc, item) => {
+    const cuenta = get().getCuentaActiva();
+    if (!cuenta) return 0;
+    return cuenta.cart.reduce((totalDesc, item) => {
       const itemDiscount = item.descuento_porcentaje || 0;
       const baseTotal = item.precio_unitario * item.cantidad;
-      return totalDesc + (baseTotal * (itemDiscount / 100));
+      return totalDesc + baseTotal * (itemDiscount / 100);
     }, 0);
   },
 
@@ -133,7 +218,8 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   getCartItemCount: () => {
-    const { cart } = get();
-    return cart.reduce((count, item) => count + item.cantidad, 0);
+    const cuenta = get().getCuentaActiva();
+    if (!cuenta) return 0;
+    return cuenta.cart.reduce((count, item) => count + item.cantidad, 0);
   },
 }));

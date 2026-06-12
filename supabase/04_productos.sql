@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS productos (
     nombre       TEXT        NOT NULL UNIQUE,
     precio       NUMERIC     NOT NULL CHECK (precio >= 0),
     -- Categoría para agrupar visualmente en el POS
-    -- Valores permitidos: 'gaseosa', 'cerveza', 'bebida'
-    categoria    TEXT        NOT NULL CHECK (categoria IN ('gaseosa', 'cerveza', 'bebida')),
+    -- Valores permitidos: 'pizza', 'gaseosa', 'cerveza', 'bebida'
+    categoria    TEXT        NOT NULL CHECK (categoria IN ('pizza', 'gaseosa', 'cerveza', 'bebida')),
     activo       BOOLEAN     NOT NULL DEFAULT true,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
