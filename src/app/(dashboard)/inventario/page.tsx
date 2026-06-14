@@ -11,7 +11,7 @@ export default async function InventarioPage() {
   // Solo se muestran ingredientes con activo = true (Soft Delete)
   const { data: ingredientes, error } = await supabase
     .from('ingredientes')
-    .select('id, nombre, stock_actual, unidad_medida, punto_reorden')
+    .select('id, nombre, stock_actual, unidad_medida, punto_reorden, categoria')
     .eq('activo', true)
     .order('nombre', { ascending: true });
 
