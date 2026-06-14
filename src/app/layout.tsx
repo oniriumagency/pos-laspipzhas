@@ -46,7 +46,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {/* Notificaciones globales */}
-        <Toaster richColors position="top-right" closeButton theme="light" />
+        <Toaster richColors position="top-center" closeButton theme="light" />
 
         {children}
 

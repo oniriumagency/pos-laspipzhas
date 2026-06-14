@@ -65,7 +65,7 @@ export async function adjustInventoryStock(
   return { success: true };
 }
 
-export async function createIngredient(data: { nombre: string, stock_actual: number, unidad_medida: string, punto_reorden: number }) {
+export async function createIngredient(data: { nombre: string, stock_actual: number, unidad_medida: string, punto_reorden: number, categoria?: string }) {
   const supabase = await createClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -77,7 +77,8 @@ export async function createIngredient(data: { nombre: string, stock_actual: num
     nombre: data.nombre,
     stock_actual: data.stock_actual,
     unidad_medida: data.unidad_medida,
-    punto_reorden: data.punto_reorden
+    punto_reorden: data.punto_reorden,
+    categoria: data.categoria || 'insumo'
   });
 
   if (error) {

@@ -2,14 +2,28 @@
 
 import { useState } from 'react';
 import { usePosStore, OrigenVenta } from '@/store/usePosStore';
-import { PlusCircle, Utensils, X, Check, Save } from 'lucide-react';
+import { PlusCircle, Utensils, X, Check, Save, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function DashboardCuentas() {
-  const { cuentas, abrirCuenta, setCuentaActiva } = usePosStore();
+  const { cuentas, abrirCuenta, setCuentaActiva, cerrarCuenta } = usePosStore();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [nombreCuenta, setNombreCuenta] = useState('');
   const [origen, setOrigen] = useState<OrigenVenta | ''>('');
+  const [expandedCuentaId, setExpandedCuentaId] = useState<string | null>(null);
+
+  const toggleExpand = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setExpandedCuentaId(prev => prev === id ? null : id);
+  };
+
+  const handleBorrarCuenta = (e: React.MouseEvent, id: string, nombre: string) => {
+    e.stopPropagation();
+    if (window.confirm(`¿Estás seguro de que deseas eliminar la cuenta "${nombre}"?\nEsta acción no se puede deshacer.`)) {
+      cerrarCuenta(id);
+      toast.success(`Cuenta "${nombre}" eliminada.`);
+    }
+  };
 
   const handleAbrirCuenta = () => {
     if (!nombreCuenta.trim()) {
@@ -28,7 +42,7 @@ export function DashboardCuentas() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1600px] w-full mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Dashboard de Cuentas</h1>
@@ -54,7 +68,7 @@ export function DashboardCuentas() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {cuentas.map((cuenta) => {
             const totalItems = cuenta.cart.reduce((acc, item) => acc + item.cantidad, 0);
             const subtotal = cuenta.cart.reduce((total, item) => total + (item.precio_unitario * item.cantidad), 0);
@@ -74,10 +88,26 @@ export function DashboardCuentas() {
                   <Utensils size={100} />
                 </div>
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                  <h3 className="text-xl font-black text-slate-800 line-clamp-1">{cuenta.nombre}</h3>
-                  <span className="text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full">
-                    {cuenta.origenVenta}
-                  </span>
+                  <h3 className="text-xl font-black text-slate-800 line-clamp-1 pr-2">{cuenta.nombre}</h3>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full">
+                      {cuenta.origenVenta}
+                    </span>
+                    <button
+                      onClick={(e) => handleBorrarCuenta(e, cuenta.id, cuenta.nombre)}
+                      className="p-1 rounded-full hover:bg-red-100 text-red-500 transition-colors bg-white shadow-sm border border-slate-100 ml-1"
+                      title="Eliminar cuenta"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => toggleExpand(e, cuenta.id)}
+                      className="p-1 rounded-full hover:bg-slate-200 text-slate-500 transition-colors ml-1 bg-slate-50 border border-slate-100 shadow-sm"
+                      title={expandedCuentaId === cuenta.id ? "Colapsar detalle" : "Ver ítems de la cuenta"}
+                    >
+                      {expandedCuentaId === cuenta.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="mt-auto space-y-3 relative z-10">
@@ -91,6 +121,26 @@ export function DashboardCuentas() {
                       {Math.floor((new Date().getTime() - new Date(cuenta.createdAt).getTime()) / 60000)} min
                     </span>
                   </div>
+
+                  {/* Vista expandida de items */}
+                  {expandedCuentaId === cuenta.id && cuenta.cart.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Detalle de la Orden</p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {cuenta.cart.map(item => (
+                          <div key={item.id} className="flex justify-between text-sm items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <span className="font-medium text-slate-700 truncate mr-2">
+                              <span className="font-bold text-orange-600 mr-1">{item.cantidad}x</span> 
+                              {item.tipo === 'pizza' ? item.tamano_nombre || 'Pizza' : item.producto_nombre}
+                            </span>
+                            <span className="font-bold text-slate-900 shrink-0">
+                              ${((item.precio_unitario * item.cantidad) * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString('es-CO')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="pt-3 mt-3 border-t border-slate-100 flex justify-between items-center">
                     <span className="text-slate-500 text-sm">Total:</span>
                     <span className="text-xl font-black text-orange-600">${total.toLocaleString('es-CO')}</span>

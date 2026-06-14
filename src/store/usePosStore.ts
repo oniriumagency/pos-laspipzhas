@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type Topping = {
   ingrediente_id: string;
@@ -86,11 +87,13 @@ export interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export const usePosStore = create<PosState>((set, get) => ({
-  cuentas: [],
-  cuentaActivaId: null,
-  isCartOpen: false,
-  pwaInstallPrompt: null,
+export const usePosStore = create<PosState>()(
+  persist(
+    (set, get) => ({
+      cuentas: [],
+      cuentaActivaId: null,
+      isCartOpen: false,
+      pwaInstallPrompt: null,
 
   getCuentaActiva: () => {
     const { cuentas, cuentaActivaId } = get();
@@ -139,14 +142,69 @@ export const usePosStore = create<PosState>((set, get) => ({
   addToCart: (item) => {
     set((state) => {
       if (!state.cuentaActivaId) return state;
-      const id =
-        typeof crypto !== 'undefined'
-          ? crypto.randomUUID()
-          : Math.random().toString(36).substring(7);
+
       return {
-        cuentas: state.cuentas.map((c) =>
-          c.id === state.cuentaActivaId ? { ...c, cart: [...c.cart, { ...item, id }] } : c
-        ),
+        cuentas: state.cuentas.map((c) => {
+          if (c.id !== state.cuentaActivaId) return c;
+
+          // 1. Intentar agrupar si es un producto simple idéntico
+          if (item.tipo === 'producto') {
+            const index = c.cart.findIndex(
+              (i) =>
+                i.tipo === 'producto' &&
+                i.producto_id === item.producto_id &&
+                i.descuento_porcentaje === item.descuento_porcentaje &&
+                i.precio_unitario === item.precio_unitario
+            );
+            
+            if (index !== -1) {
+              const newCart = [...c.cart];
+              newCart[index] = {
+                ...newCart[index],
+                cantidad: newCart[index].cantidad + item.cantidad,
+              };
+              return { ...c, cart: newCart };
+            }
+          }
+          
+          // 2. Intentar agrupar si es una pizza idéntica
+          if (item.tipo === 'pizza') {
+            const index = c.cart.findIndex((i) => {
+              if (i.tipo !== 'pizza') return false;
+              
+              // Comparamos los atributos clave de configuración
+              const mismoTamano = i.tamano_id === item.tamano_id;
+              const mismaPromo = i.descuento_porcentaje === item.descuento_porcentaje;
+              const mismoEsMitades = i.es_mitades === item.es_mitades;
+              const mismoSabor1 = i.sabor_1?.id === item.sabor_1?.id;
+              const mismoSabor2 = i.sabor_2?.id === item.sabor_2?.id;
+              
+              // Comparamos extras (ordenando ids para asegurar match)
+              const idsExtrasI = (i.extras || []).map(e => e.ingrediente_id).sort().join(',');
+              const idsExtrasItem = (item.extras || []).map(e => e.ingrediente_id).sort().join(',');
+              const mismosExtras = idsExtrasI === idsExtrasItem;
+
+              return mismoTamano && mismaPromo && mismoEsMitades && mismoSabor1 && mismoSabor2 && mismosExtras;
+            });
+
+            if (index !== -1) {
+              const newCart = [...c.cart];
+              newCart[index] = {
+                ...newCart[index],
+                cantidad: newCart[index].cantidad + item.cantidad,
+              };
+              return { ...c, cart: newCart };
+            }
+          }
+
+          // Si no se agrupó, se inserta como ítem nuevo
+          const id =
+            typeof crypto !== 'undefined'
+              ? crypto.randomUUID()
+              : Math.random().toString(36).substring(7);
+              
+          return { ...c, cart: [...c.cart, { ...item, id }] };
+        }),
       };
     });
   },
@@ -222,4 +280,15 @@ export const usePosStore = create<PosState>((set, get) => ({
     if (!cuenta) return 0;
     return cuenta.cart.reduce((count, item) => count + item.cantidad, 0);
   },
-}));
+    }),
+    {
+      name: 'pipzhas-pos-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ 
+        cuentas: state.cuentas, 
+        cuentaActivaId: state.cuentaActivaId,
+        isCartOpen: state.isCartOpen
+      }),
+    }
+  )
+);

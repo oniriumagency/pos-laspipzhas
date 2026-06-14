@@ -29,9 +29,13 @@ type Ingrediente = {
   stock_actual: number;
   unidad_medida: string;
   punto_reorden: number;
+  categoria?: 'insumo' | 'bebida';
 };
 
 export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[] }) {
+  // Estado para las pestañas
+  const [activeTab, setActiveTab] = useState<'insumo' | 'bebida'>('insumo');
+
   // Estado para el modal de ajuste
   const [selectedItem, setSelectedItem] = useState<Ingrediente | null>(null);
   const [modalType, setModalType] = useState<'merma' | 'ajuste'>('ajuste');
@@ -103,7 +107,8 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         nombre: newNombre.trim(),
         stock_actual: stockNum,
         unidad_medida: newUnidad.trim(),
-        punto_reorden: reordenNum
+        punto_reorden: reordenNum,
+        categoria: activeTab
       });
 
       if (res.error) {
@@ -137,7 +142,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
 
   const guardarUmbrales = () => {
     // Filtrar solo los que realmente cambiaron
-    const cambiosReales = ingredientes
+    const cambiosReales = ingredientesFiltrados
       .filter(ing => umbralesEditados[ing.id] !== ing.punto_reorden)
       .map(ing => ({ id: ing.id, punto_reorden: umbralesEditados[ing.id] }));
 
@@ -203,6 +208,8 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     });
   };
 
+  const ingredientesFiltrados = ingredientes.filter(i => (i.categoria || 'insumo') === activeTab);
+
   return (
     <div className="mt-8 relative">
       {/* ═══ Barra Superior de Acciones ═══ */}
@@ -237,7 +244,31 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
           onClick={() => setIsNewOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:bg-orange-500 transition-all hover:-translate-y-0.5"
         >
-          <PlusCircle size={18} /> Nuevo Insumo
+          <PlusCircle size={18} /> {activeTab === 'insumo' ? 'Nuevo Insumo' : 'Nueva Bebida'}
+        </button>
+      </div>
+
+      {/* ═══ Barra de Pestañas (Insumos vs Bebidas) ═══ */}
+      <div className="flex gap-4 mb-6 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('insumo')}
+          className={`pb-3 px-2 font-bold text-sm transition-all border-b-2 ${
+            activeTab === 'insumo'
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Insumos de Producción
+        </button>
+        <button
+          onClick={() => setActiveTab('bebida')}
+          className={`pb-3 px-2 font-bold text-sm transition-all border-b-2 ${
+            activeTab === 'bebida'
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Bebidas y Productos
         </button>
       </div>
 
@@ -248,8 +279,8 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
              <PackageSearch size={24} />
           </div>
           <div>
-             <p className="text-sm font-medium text-slate-500">Insumos Registrados</p>
-             <p className="text-2xl font-bold text-slate-900">{ingredientes.length}</p>
+             <p className="text-sm font-medium text-slate-500">Total en Lista</p>
+             <p className="text-2xl font-bold text-slate-900">{ingredientesFiltrados.length}</p>
           </div>
         </div>
         
@@ -260,7 +291,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
           <div>
              <p className="text-sm font-medium text-red-600/70">En Alerta de Stock</p>
              <p className="text-2xl font-bold text-red-700">
-               {ingredientes.filter(i => i.stock_actual <= i.punto_reorden).length}
+               {ingredientesFiltrados.filter(i => i.stock_actual <= i.punto_reorden).length}
              </p>
           </div>
         </div>
@@ -289,7 +320,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {ingredientes.map((ing) => {
+              {ingredientesFiltrados.map((ing) => {
                 const umbralActual = modoEdicion ? (umbralesEditados[ing.id] ?? ing.punto_reorden) : ing.punto_reorden;
                 const enAlerta = ing.stock_actual <= umbralActual;
                 
@@ -376,13 +407,19 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
             </div>
 
             <div className="mt-6 text-center">
-              <h3 className="text-xl font-bold text-slate-900">Nuevo Insumo</h3>
-              <p className="text-sm text-slate-500 mt-1">Registra un nuevo material en bodega.</p>
+              <h3 className="text-xl font-bold text-slate-900">
+                {activeTab === 'insumo' ? 'Nuevo Insumo' : 'Nueva Bebida / Producto'}
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Registra un nuevo {activeTab === 'insumo' ? 'material' : 'producto'} en bodega.
+              </p>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Nombre del Insumo</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1">
+                  Nombre {activeTab === 'insumo' ? 'del Insumo' : 'de la Bebida'}
+                </label>
                 <input
                   type="text"
                   required
@@ -447,7 +484,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                   disabled={isPending}
                   className="flex-1 px-4 py-3 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 bg-slate-900 shadow-slate-900/20 hover:bg-black"
                 >
-                  {isPending ? 'Guardando...' : 'Crear Insumo'}
+                  {isPending ? 'Guardando...' : (activeTab === 'insumo' ? 'Crear Insumo' : 'Crear Bebida')}
                 </button>
               </div>
             </form>
