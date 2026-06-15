@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { usePosStore } from '@/store/usePosStore';
 import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape, Pizza } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ interface ProductoCardProps {
     nombre: string;
     precio: number;
     categoria: CategoriaProducto;
+    imagen_url?: string | null;
   };
 }
 
@@ -96,6 +98,7 @@ export function ProductoCard({ producto }: ProductoCardProps) {
       tipo: 'producto',
       producto_id: producto.id,
       producto_nombre: producto.nombre,
+      producto_imagen: producto.imagen_url,
       precio_unitario: producto.precio,
       descuento_porcentaje: descuentoPorcentaje,
       cantidad,
@@ -118,23 +121,42 @@ export function ProductoCard({ producto }: ProductoCardProps) {
   return (
     <div className={`group bg-white rounded-[2rem] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 border ${estilos.colorBorde} flex flex-col gap-4 relative overflow-hidden`}>
 
-      {/* Decal de fondo con el ícono de categoría */}
-      <div className={`absolute -right-6 -top-6 ${estilos.colorIcono} opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-500`}>
-        <Icono size={120} />
+      {/* Imagen del producto o Ícono de fondo */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none rounded-[2rem]">
+        {producto.imagen_url ? (
+          <div className="absolute -right-2 top-[20px] w-[55%] h-[140%] opacity-30 group-hover:opacity-100 transition-all duration-500 transform group-hover:scale-110 group-hover:-translate-y-2 origin-top-right">
+            <Image
+              src={producto.imagen_url}
+              alt={producto.nombre}
+              fill
+              className="object-contain object-right-top drop-shadow-2xl"
+              sizes="(max-width: 768px) 50vw, 33vw"
+            />
+            {/* Gradiente sutil para que el texto siga siendo legible */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/40 to-transparent w-[150%] -left-1/2" />
+          </div>
+        ) : (
+          <div className={`absolute -right-6 -top-6 ${estilos.colorIcono} opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-500`}>
+            <Icono size={120} />
+          </div>
+        )}
       </div>
 
       {/* Cabecera: ícono + badge de categoría */}
       <div className="flex items-start justify-between relative z-10">
-        <div className={`${estilos.colorFondo} ${estilos.colorIcono} p-3.5 rounded-2xl group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+        <div className={`${estilos.colorFondo} ${estilos.colorIcono} p-3.5 rounded-2xl group-hover:scale-110 transition-transform duration-300 shadow-sm bg-white/80 backdrop-blur-sm`}>
           <Icono size={26} className="stroke-[1.5]" />
         </div>
-        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${estilos.colorBadge}`}>
+        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${estilos.colorBadge} bg-white/80 backdrop-blur-sm shadow-sm`}>
           {estilos.etiqueta}
         </span>
       </div>
 
+      {/* Espaciador para cuando la imagen esté de fondo y la tarjeta necesite algo de altura extra */}
+      <div className="h-12" />
+
       {/* Nombre y precio base */}
-      <div className="relative z-10">
+      <div className="relative z-10 mt-2">
         <h3 className="font-black text-slate-800 text-base leading-tight tracking-tight">
           {producto.nombre}
         </h3>

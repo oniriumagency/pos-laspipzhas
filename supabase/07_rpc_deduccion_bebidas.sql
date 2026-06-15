@@ -63,7 +63,11 @@ BEGIN
         -- Se registran en la venta y SI COINCIDEN por nombre con un ingrediente (ej: bebida), se descuentan.
         IF cart_item.tamano_id IS NULL THEN
             IF cart_item.producto_nombre IS NOT NULL THEN
-                SELECT id INTO v_ing FROM ingredientes WHERE nombre = cart_item.producto_nombre LIMIT 1;
+                SELECT id INTO v_ing 
+                FROM ingredientes 
+                WHERE lower(trim(nombre)) = lower(trim(cart_item.producto_nombre)) 
+                LIMIT 1;
+                
                 IF FOUND THEN
                     INSERT INTO temp_deducciones (ing_id, cantidad_descontar) 
                     VALUES (v_ing, cart_item.cantidad) 

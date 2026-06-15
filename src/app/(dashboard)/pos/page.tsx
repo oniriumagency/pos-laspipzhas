@@ -30,7 +30,7 @@ export default async function POSPage() {
   // Fetch productos activos (gaseosas, cervezas, bebidas)
   const { data: productos } = await supabase
     .from('productos')
-    .select('id, nombre, precio, categoria')
+    .select('id, nombre, precio, categoria, imagen_url')
     .eq('activo', true)
     .order('categoria', { ascending: true })
     .order('nombre', { ascending: true });

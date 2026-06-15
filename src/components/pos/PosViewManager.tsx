@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePosStore } from '@/store/usePosStore';
 import { DashboardCuentas } from './DashboardCuentas';
 import { MenuDisplay } from './MenuDisplay';
@@ -15,8 +16,12 @@ interface PosViewManagerProps {
 }
 
 export function PosViewManager({ tamanos, toppings, sabores, productos }: PosViewManagerProps) {
-  const { cuentaActivaId, getCuentaActiva, setCuentaActiva } = usePosStore();
+  const { cuentaActivaId, getCuentaActiva, setCuentaActiva, cargarCuentasAbiertas } = usePosStore();
   const cuenta = getCuentaActiva();
+
+  useEffect(() => {
+    cargarCuentasAbiertas();
+  }, [cargarCuentasAbiertas]);
 
   if (!cuentaActivaId || !cuenta) {
     return (

@@ -11,6 +11,7 @@ export type Producto = {
   nombre: string;
   precio: number;
   categoria: CategoriaProducto;
+  imagen_url?: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;

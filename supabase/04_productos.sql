@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS productos (
     -- Categoría para agrupar visualmente en el POS
     -- Valores permitidos: 'pizza', 'gaseosa', 'cerveza', 'bebida'
     categoria    TEXT        NOT NULL CHECK (categoria IN ('pizza', 'gaseosa', 'cerveza', 'bebida')),
+    imagen_url   TEXT,       -- URL de la imagen del producto
     activo       BOOLEAN     NOT NULL DEFAULT true,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -51,6 +52,6 @@ INSERT INTO productos (nombre, precio, categoria) VALUES
     ('Águila Light 330ml',       4000, 'cerveza'),
     ('Club Colombia 330ml',      4500, 'cerveza'),
 
-    -- Cervezas Botellón 830ml
-    ('Club Colombia 830ml',      7000, 'cerveza')
+    -- Cervezas Botellón 850ml
+    ('Club Colombia 850ml',      7000, 'cerveza')
 ON CONFLICT (nombre) DO NOTHING;

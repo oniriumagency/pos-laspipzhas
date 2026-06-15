@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { usePosStore, OrigenVenta } from '@/store/usePosStore';
 import {
   Trash2, Plus, Minus, ShoppingBag, Receipt, X, AlertCircle, Tag,
@@ -152,7 +153,19 @@ export function CartSidebar() {
                       )}
                       {/* ── PRODUCTO ── */}
                       {item.tipo === 'producto' && (
-                        <h4 className="font-bold text-slate-800">{item.producto_nombre}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          {item.producto_imagen && (
+                            <div className="relative w-8 h-8 flex-shrink-0 bg-slate-50/50 rounded-lg p-1">
+                              <Image 
+                                src={item.producto_imagen} 
+                                alt={item.producto_nombre || 'Producto'} 
+                                fill 
+                                className="object-contain"
+                              />
+                            </div>
+                          )}
+                          <h4 className="font-bold text-slate-800">{item.producto_nombre}</h4>
+                        </div>
                       )}
                       <div className="flex items-center gap-2">
                         <span className="text-orange-500 font-bold text-sm">

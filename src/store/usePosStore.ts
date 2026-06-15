@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { createClient } from '@/lib/supabase/client';
 
 export type Topping = {
   ingrediente_id: string;
@@ -39,6 +40,7 @@ export type CartItem = {
   // ── Campos exclusivos para tipo = 'producto' ───────────────────────────────
   producto_id?: string;
   producto_nombre?: string;
+  producto_imagen?: string | null;
 };
 
 export type Cuenta = {
@@ -53,21 +55,22 @@ interface PosState {
   // ── Cuentas ─────────────────────────────────────────────────────────────
   cuentas: Cuenta[];
   cuentaActivaId: string | null;
-  abrirCuenta: (nombre: string, origen: OrigenVenta) => void;
-  cerrarCuenta: (id: string) => void;
+  cargarCuentasAbiertas: () => Promise<void>;
+  abrirCuenta: (nombre: string, origen: OrigenVenta) => Promise<void>;
+  cerrarCuenta: (id: string) => Promise<void>;
   setCuentaActiva: (id: string | null) => void;
   getCuentaActiva: () => Cuenta | undefined;
 
   // ── Carrito (aplica a la cuenta activa) ─────────────────────────────────
   isCartOpen: boolean;
   setCartOpen: (open: boolean) => void;
-  addToCart: (item: Omit<CartItem, 'id'>) => void;
-  removeFromCart: (itemId: string) => void;
-  updateQuantity: (itemId: string, cantidad: number) => void;
-  clearCart: () => void;
+  addToCart: (item: Omit<CartItem, 'id'>) => Promise<void>;
+  removeFromCart: (itemId: string) => Promise<void>;
+  updateQuantity: (itemId: string, cantidad: number) => Promise<void>;
+  clearCart: () => Promise<void>;
 
   // ── Configuración de la Venta (cuenta activa) ───────────────────────────
-  setOrigenVenta: (origen: OrigenVenta) => void;
+  setOrigenVenta: (origen: OrigenVenta) => Promise<void>;
 
   // ── PWA Install Prompt ───────────────────────────────────────────────────
   pwaInstallPrompt: BeforeInstallPromptEvent | null;
@@ -87,6 +90,23 @@ export interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+// Helper para sincronizar la cuenta en Supabase
+const syncCuentaToSupabase = async (cuenta: Cuenta) => {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('cuentas_abiertas')
+    .update({ 
+      cart: cuenta.cart,
+      origen_venta: cuenta.origenVenta,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', cuenta.id);
+
+  if (error) {
+    console.error(`Error al sincronizar la cuenta ${cuenta.id} en Supabase:`, error.message, error.details);
+  }
+};
+
 export const usePosStore = create<PosState>()(
   persist(
     (set, get) => ({
@@ -95,16 +115,38 @@ export const usePosStore = create<PosState>()(
       isCartOpen: false,
       pwaInstallPrompt: null,
 
+  cargarCuentasAbiertas: async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('cuentas_abiertas')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error al cargar las cuentas abiertas desde Supabase:', error.message, error.details);
+      return;
+    }
+
+    if (data) {
+      const cuentasMapeadas: Cuenta[] = data.map((row: any) => ({
+        id: row.id,
+        nombre: row.nombre,
+        origenVenta: row.origen_venta as OrigenVenta | null,
+        cart: row.cart as CartItem[],
+        createdAt: row.created_at,
+      }));
+
+      set({ cuentas: cuentasMapeadas });
+    }
+  },
+
   getCuentaActiva: () => {
     const { cuentas, cuentaActivaId } = get();
     return cuentas.find((c) => c.id === cuentaActivaId);
   },
 
-  abrirCuenta: (nombre, origen) => {
-    const id =
-      typeof crypto !== 'undefined'
-        ? crypto.randomUUID()
-        : Math.random().toString(36).substring(7);
+  abrirCuenta: async (nombre, origen) => {
+    const id = typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).substring(7);
     const nuevaCuenta: Cuenta = {
       id,
       nombre,
@@ -112,34 +154,72 @@ export const usePosStore = create<PosState>()(
       cart: [],
       createdAt: new Date().toISOString(),
     };
+
+    // Actualización optimista
     set((state) => ({ cuentas: [...state.cuentas, nuevaCuenta], cuentaActivaId: id }));
+
+    // Sincronizar con servidor
+    const supabase = createClient();
+    const { error } = await supabase.from('cuentas_abiertas').insert({
+      id: nuevaCuenta.id,
+      nombre: nuevaCuenta.nombre,
+      origen_venta: nuevaCuenta.origenVenta,
+      cart: nuevaCuenta.cart,
+      created_at: nuevaCuenta.createdAt,
+    });
+
+    if (error) {
+      console.error('Error al insertar la cuenta abierta en Supabase:', error.message, error.details);
+      // En un sistema estricto, revertiríamos el estado o emitiríamos un error visible al usuario.
+    }
   },
 
-  cerrarCuenta: (id) => {
+  cerrarCuenta: async (id) => {
+    // Actualización optimista
     set((state) => ({
       cuentas: state.cuentas.filter((c) => c.id !== id),
       cuentaActivaId: state.cuentaActivaId === id ? null : state.cuentaActivaId,
     }));
+
+    // Sincronizar con servidor
+    const supabase = createClient();
+    const { error } = await supabase.from('cuentas_abiertas').delete().eq('id', id);
+
+    if (error) {
+      console.error(`Error al eliminar la cuenta abierta ${id} en Supabase:`, error.message, error.details);
+    }
   },
 
   setCuentaActiva: (id) => set({ cuentaActivaId: id }),
 
   setCartOpen: (open) => set({ isCartOpen: open }),
 
-  setOrigenVenta: (origen) => {
+  setOrigenVenta: async (origen) => {
+    let cuentaModificada: Cuenta | undefined;
+
     set((state) => {
       if (!state.cuentaActivaId) return state;
       return {
-        cuentas: state.cuentas.map((c) =>
-          c.id === state.cuentaActivaId ? { ...c, origenVenta: origen } : c
-        ),
+        cuentas: state.cuentas.map((c) => {
+          if (c.id === state.cuentaActivaId) {
+            cuentaModificada = { ...c, origenVenta: origen };
+            return cuentaModificada;
+          }
+          return c;
+        }),
       };
     });
+
+    if (cuentaModificada) {
+      await syncCuentaToSupabase(cuentaModificada);
+    }
   },
 
   setPwaInstallPrompt: (event) => set({ pwaInstallPrompt: event }),
 
-  addToCart: (item) => {
+  addToCart: async (item) => {
+    let cuentaModificada: Cuenta | undefined;
+
     set((state) => {
       if (!state.cuentaActivaId) return state;
 
@@ -163,7 +243,8 @@ export const usePosStore = create<PosState>()(
                 ...newCart[index],
                 cantidad: newCart[index].cantidad + item.cantidad,
               };
-              return { ...c, cart: newCart };
+              cuentaModificada = { ...c, cart: newCart };
+              return cuentaModificada;
             }
           }
           
@@ -193,62 +274,90 @@ export const usePosStore = create<PosState>()(
                 ...newCart[index],
                 cantidad: newCart[index].cantidad + item.cantidad,
               };
-              return { ...c, cart: newCart };
+              cuentaModificada = { ...c, cart: newCart };
+              return cuentaModificada;
             }
           }
 
           // Si no se agrupó, se inserta como ítem nuevo
-          const id =
-            typeof crypto !== 'undefined'
-              ? crypto.randomUUID()
-              : Math.random().toString(36).substring(7);
-              
-          return { ...c, cart: [...c.cart, { ...item, id }] };
+          const id = typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).substring(7);
+          cuentaModificada = { ...c, cart: [...c.cart, { ...item, id }] };
+          return cuentaModificada;
         }),
       };
     });
+
+    if (cuentaModificada) {
+      await syncCuentaToSupabase(cuentaModificada);
+    }
   },
 
-  removeFromCart: (itemId) => {
+  removeFromCart: async (itemId) => {
+    let cuentaModificada: Cuenta | undefined;
+
     set((state) => {
       if (!state.cuentaActivaId) return state;
       return {
-        cuentas: state.cuentas.map((c) =>
-          c.id === state.cuentaActivaId
-            ? { ...c, cart: c.cart.filter((i) => i.id !== itemId) }
-            : c
-        ),
+        cuentas: state.cuentas.map((c) => {
+          if (c.id === state.cuentaActivaId) {
+            cuentaModificada = { ...c, cart: c.cart.filter((i) => i.id !== itemId) };
+            return cuentaModificada;
+          }
+          return c;
+        }),
       };
     });
+
+    if (cuentaModificada) {
+      await syncCuentaToSupabase(cuentaModificada);
+    }
   },
 
-  updateQuantity: (itemId, cantidad) => {
+  updateQuantity: async (itemId, cantidad) => {
+    let cuentaModificada: Cuenta | undefined;
+
     set((state) => {
       if (!state.cuentaActivaId) return state;
       return {
-        cuentas: state.cuentas.map((c) =>
-          c.id === state.cuentaActivaId
-            ? {
-                ...c,
-                cart: c.cart.map((item) =>
-                  item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
-                ),
-              }
-            : c
-        ),
+        cuentas: state.cuentas.map((c) => {
+          if (c.id === state.cuentaActivaId) {
+            cuentaModificada = {
+              ...c,
+              cart: c.cart.map((item) =>
+                item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
+              ),
+            };
+            return cuentaModificada;
+          }
+          return c;
+        }),
       };
     });
+
+    if (cuentaModificada) {
+      await syncCuentaToSupabase(cuentaModificada);
+    }
   },
 
-  clearCart: () => {
+  clearCart: async () => {
+    let cuentaModificada: Cuenta | undefined;
+
     set((state) => {
       if (!state.cuentaActivaId) return state;
       return {
-        cuentas: state.cuentas.map((c) =>
-          c.id === state.cuentaActivaId ? { ...c, cart: [] } : c
-        ),
+        cuentas: state.cuentas.map((c) => {
+          if (c.id === state.cuentaActivaId) {
+            cuentaModificada = { ...c, cart: [] };
+            return cuentaModificada;
+          }
+          return c;
+        }),
       };
     });
+
+    if (cuentaModificada) {
+      await syncCuentaToSupabase(cuentaModificada);
+    }
   },
 
   getSubtotal: () => {
@@ -284,8 +393,9 @@ export const usePosStore = create<PosState>()(
     {
       name: 'pipzhas-pos-storage',
       storage: createJSONStorage(() => localStorage),
+      // Solo persistimos la cuentaActivaId y si el carrito está abierto en este dispositivo
+      // Las cuentas en sí vienen del servidor para asegurar que todas las pestañas vean lo mismo si recargan.
       partialize: (state) => ({ 
-        cuentas: state.cuentas, 
         cuentaActivaId: state.cuentaActivaId,
         isCartOpen: state.isCartOpen
       }),

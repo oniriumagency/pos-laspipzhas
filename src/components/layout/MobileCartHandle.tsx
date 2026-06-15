@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
 import { ShoppingCart } from 'lucide-react';
@@ -20,7 +20,10 @@ export function MobileCartHandle() {
   // Solo habilitar en la ruta del POS
   const estaEnPos = pathname === '/pos';
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     if (!estaEnPos) return;
 
     let inicioX = 0;
@@ -64,8 +67,8 @@ export function MobileCartHandle() {
     };
   }, [estaEnPos, isCartOpen, setCartOpen]);
 
-  // No renderizar fuera de /pos ni en desktop
-  if (!estaEnPos) return null;
+  // No renderizar fuera de /pos ni en desktop, ni en SSR (para evitar mismatch)
+  if (!mounted || !estaEnPos) return null;
 
   const cantidadItems = getCartItemCount();
 
