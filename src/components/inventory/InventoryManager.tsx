@@ -7,6 +7,7 @@ import {
   verificarDependenciasIngrediente,
   actualizarUmbralesBatch,
   actualizarIngrediente,
+  desactivarIngrediente,
 } from '@/server/actions/inventory';
 import {
   AlertCircle,
@@ -58,7 +59,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
   const [newUnidad, setNewUnidad] = useState('pz');
   const [newReorden, setNewReorden] = useState('10');
   const [newPrecio, setNewPrecio] = useState('0');
-  const [newCategoria, setNewCategoria] = useState<'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
+  const [newCategoria, setNewCategoria] = useState<'insumo' | 'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
 
   // Estado para edición
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -66,7 +67,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
   const [editNombre, setEditNombre] = useState('');
   const [editPrecio, setEditPrecio] = useState('0');
   const [editUnidad, setEditUnidad] = useState('');
-  const [editCategoria, setEditCategoria] = useState<'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
+  const [editCategoria, setEditCategoria] = useState<'insumo' | 'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
 
   // ─── Estado para Modo Edición Inline de Umbrales ───────────────────────
   const [modoEdicion, setModoEdicion] = useState(false);
