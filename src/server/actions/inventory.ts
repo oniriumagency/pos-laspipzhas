@@ -65,7 +65,7 @@ export async function adjustInventoryStock(
   return { success: true };
 }
 
-export async function createIngredient(data: { nombre: string, stock_actual: number, unidad_medida: string, punto_reorden: number, categoria?: string }) {
+export async function createIngredient(data: { nombre: string, stock_actual: number, unidad_medida: string, punto_reorden: number, categoria?: string, precio?: number }) {
   const supabase = await createClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -78,11 +78,27 @@ export async function createIngredient(data: { nombre: string, stock_actual: num
     stock_actual: data.stock_actual,
     unidad_medida: data.unidad_medida,
     punto_reorden: data.punto_reorden,
-    categoria: data.categoria || 'insumo'
+    categoria: data.categoria || 'insumo',
+    precio: data.precio || 0
   });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Sincronizar con la tabla productos si no es insumo
+  if (data.categoria && data.categoria !== 'insumo') {
+    const { error: errorProducto } = await supabase.from('productos').insert({
+      nombre: data.nombre,
+      precio: data.precio || 0,
+      categoria: data.categoria
+    });
+    if (errorProducto) {
+      console.error('Error sincronizando producto:', errorProducto);
+      // No fallamos la creación principal, pero registramos el error
+    }
+    revalidatePath('/pos');
+    revalidatePath('/productos');
   }
 
   revalidatePath('/inventario');
@@ -212,6 +228,66 @@ export async function actualizarUmbralesBatch(
 
   if (errores.length > 0) {
     return { error: `Errores al actualizar umbrales: ${errores.join(', ')}` };
+  }
+
+  revalidatePath('/inventario');
+  return { success: true };
+}
+
+export async function actualizarIngrediente(
+  ingredienteId: string,
+  data: { nombre: string; stock_actual: number; unidad_medida: string; punto_reorden: number; categoria?: string; precio?: number }
+) {
+  const supabase = await createClient();
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { error: 'No autorizado para modificar inventario.' };
+  }
+
+  // Obtener el nombre anterior para poder sincronizar si el nombre cambia
+  const { data: oldIngrediente } = await supabase
+    .from('ingredientes')
+    .select('nombre, categoria')
+    .eq('id', ingredienteId)
+    .single();
+
+  const { error } = await supabase
+    .from('ingredientes')
+    .update({
+      nombre: data.nombre.trim(),
+      stock_actual: data.stock_actual,
+      unidad_medida: data.unidad_medida,
+      punto_reorden: data.punto_reorden,
+      categoria: data.categoria,
+      precio: data.precio ?? 0
+    })
+    .eq('id', ingredienteId);
+
+  if (error) {
+    if (error.code === '23505') {
+      return { error: `Ya existe un insumo con el nombre "${data.nombre.trim()}".` };
+    }
+    return { error: `Error al actualizar: ${error.message}` };
+  }
+
+  // Sincronizar con la tabla productos si no es insumo
+  if (oldIngrediente && data.categoria && data.categoria !== 'insumo') {
+    // Intentamos actualizar el producto correspondiente (asumiendo que los nombres coinciden inicialmente)
+    const { error: errorProducto } = await supabase
+      .from('productos')
+      .update({
+        nombre: data.nombre.trim(),
+        precio: data.precio ?? 0,
+        categoria: data.categoria
+      })
+      .eq('nombre', oldIngrediente.nombre);
+
+    if (errorProducto) {
+      console.error('Error sincronizando actualización en productos:', errorProducto);
+    }
+    revalidatePath('/pos');
+    revalidatePath('/productos');
   }
 
   revalidatePath('/inventario');

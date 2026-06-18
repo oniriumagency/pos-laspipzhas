@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 // Categorías válidas para la tabla productos
-export type CategoriaProducto = 'gaseosa' | 'cerveza' | 'bebida' | 'pizza';
+export type CategoriaProducto = 'gaseosa' | 'cerveza' | 'bebida' | 'pizza' | 'cigarrillo';
 
 export type Producto = {
   id: string;
@@ -91,9 +91,24 @@ export async function crearProducto(
     }
     return { success: false, error: `Error al crear el producto: ${error.message}` };
   }
+  // Sincronizar con la tabla ingredientes si no es pizza
+  if (categoria !== 'pizza') {
+    const { error: errorBodega } = await supabase.from('ingredientes').insert({
+      nombre: nombre.trim(),
+      precio: precio,
+      categoria: categoria,
+      stock_actual: 0,
+      unidad_medida: 'unidad',
+      punto_reorden: 0
+    });
+    if (errorBodega) {
+      console.error('Error sincronizando ingrediente en bodega:', errorBodega);
+    }
+  }
 
   revalidatePath('/pos');
   revalidatePath('/productos');
+  revalidatePath('/inventario');
   return { success: true };
 }
 
@@ -120,6 +135,13 @@ export async function actualizarProducto(
     return { success: false, error: 'El precio debe ser mayor a cero.' };
   }
 
+  // Para sincronizar actualizaciones, necesitamos el nombre anterior
+  const { data: oldProducto } = await supabase
+    .from('productos')
+    .select('nombre')
+    .eq('id', productoId)
+    .single();
+
   const { error } = await supabase
     .from('productos')
     .update({
@@ -137,8 +159,25 @@ export async function actualizarProducto(
     return { success: false, error: `Error al actualizar el producto: ${error.message}` };
   }
 
+  // Sincronizar con bodega
+  if (oldProducto && categoria !== 'pizza') {
+    const { error: errorBodega } = await supabase
+      .from('ingredientes')
+      .update({
+        nombre: nombre.trim(),
+        precio: precio,
+        categoria: categoria
+      })
+      .eq('nombre', oldProducto.nombre);
+    
+    if (errorBodega) {
+      console.error('Error sincronizando actualización en bodega:', errorBodega);
+    }
+  }
+
   revalidatePath('/pos');
   revalidatePath('/productos');
+  revalidatePath('/inventario');
   return { success: true };
 }
 

@@ -5,8 +5,8 @@ import {
   adjustInventoryStock,
   createIngredient,
   verificarDependenciasIngrediente,
-  desactivarIngrediente,
   actualizarUmbralesBatch,
+  actualizarIngrediente,
 } from '@/server/actions/inventory';
 import {
   AlertCircle,
@@ -29,12 +29,22 @@ type Ingrediente = {
   stock_actual: number;
   unidad_medida: string;
   punto_reorden: number;
-  categoria?: 'insumo' | 'bebida';
+  categoria?: 'insumo' | 'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza';
+  precio?: number;
 };
 
 export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[] }) {
   // Estado para las pestañas
-  const [activeTab, setActiveTab] = useState<'insumo' | 'bebida'>('insumo');
+  type TabId = 'todo' | 'insumo' | 'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza';
+  const TABS: { id: TabId; label: string }[] = [
+    { id: 'todo', label: 'Todo' },
+    { id: 'insumo', label: 'Insumos' },
+    { id: 'bebida', label: 'Bebidas' },
+    { id: 'gaseosa', label: 'Gaseosas' },
+    { id: 'cerveza', label: 'Cervezas' },
+    { id: 'cigarrillo', label: 'Cigarrillos' },
+  ];
+  const [activeTab, setActiveTab] = useState<TabId>('todo');
 
   // Estado para el modal de ajuste
   const [selectedItem, setSelectedItem] = useState<Ingrediente | null>(null);
@@ -47,6 +57,16 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
   const [newStock, setNewStock] = useState('0');
   const [newUnidad, setNewUnidad] = useState('pz');
   const [newReorden, setNewReorden] = useState('10');
+  const [newPrecio, setNewPrecio] = useState('0');
+  const [newCategoria, setNewCategoria] = useState<'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
+
+  // Estado para edición
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Ingrediente | null>(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editPrecio, setEditPrecio] = useState('0');
+  const [editUnidad, setEditUnidad] = useState('');
+  const [editCategoria, setEditCategoria] = useState<'bebida' | 'cigarrillo' | 'gaseosa' | 'cerveza'>('bebida');
 
   // ─── Estado para Modo Edición Inline de Umbrales ───────────────────────
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -108,7 +128,8 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         stock_actual: stockNum,
         unidad_medida: newUnidad.trim(),
         punto_reorden: reordenNum,
-        categoria: activeTab
+        categoria: newCategoria,
+        precio: newCategoria !== 'insumo' ? (Number(newPrecio) || 0) : 0
       });
 
       if (res.error) {
@@ -120,6 +141,41 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         setNewStock('0');
         setNewUnidad('pz');
         setNewReorden('10');
+        setNewPrecio('0');
+        setNewCategoria('bebida');
+      }
+    });
+  };
+
+  const abrirEdicion = (ing: Ingrediente) => {
+    setEditItem(ing);
+    setEditNombre(ing.nombre);
+    setEditUnidad(ing.unidad_medida);
+    setEditPrecio((ing.precio || 0).toString());
+    setEditCategoria((ing.categoria as any) || 'bebida');
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editItem || !editNombre.trim()) return;
+
+    startTransition(async () => {
+      const res = await actualizarIngrediente(editItem.id, {
+        nombre: editNombre.trim(),
+        stock_actual: editItem.stock_actual,
+        unidad_medida: editUnidad.trim(),
+        punto_reorden: editItem.punto_reorden,
+        categoria: editItem.categoria === 'insumo' ? 'insumo' : editCategoria,
+        precio: Number(editPrecio) || 0
+      });
+
+      if (res.error) {
+        toast.error(`Error: ${res.error}`);
+      } else {
+        toast.success(`Insumo actualizado exitosamente.`);
+        setIsEditOpen(false);
+        setEditItem(null);
       }
     });
   };
@@ -208,7 +264,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     });
   };
 
-  const ingredientesFiltrados = ingredientes.filter(i => (i.categoria || 'insumo') === activeTab);
+  const ingredientesFiltrados = ingredientes.filter(i => activeTab === 'todo' || (i.categoria || 'insumo') === activeTab);
 
   return (
     <div className="mt-8 relative">
@@ -244,32 +300,25 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
           onClick={() => setIsNewOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:bg-orange-500 transition-all hover:-translate-y-0.5"
         >
-          <PlusCircle size={18} /> {activeTab === 'insumo' ? 'Nuevo Insumo' : 'Nueva Bebida'}
+          <PlusCircle size={18} /> Nuevo Producto
         </button>
       </div>
 
-      {/* ═══ Barra de Pestañas (Insumos vs Bebidas) ═══ */}
-      <div className="flex gap-4 mb-6 border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('insumo')}
-          className={`pb-3 px-2 font-bold text-sm transition-all border-b-2 ${
-            activeTab === 'insumo'
-              ? 'border-orange-500 text-orange-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Insumos de Producción
-        </button>
-        <button
-          onClick={() => setActiveTab('bebida')}
-          className={`pb-3 px-2 font-bold text-sm transition-all border-b-2 ${
-            activeTab === 'bebida'
-              ? 'border-orange-500 text-orange-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Bebidas y Productos
-        </button>
+      {/* ═══ Barra de Pestañas ═══ */}
+      <div className="flex gap-4 mb-6 border-b border-slate-200 overflow-x-auto overflow-y-hidden pb-1 scrollbar-hide">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-3 px-2 font-bold text-sm transition-all border-b-2 whitespace-nowrap ${
+              activeTab === tab.id
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tarjetas de Resumen / Alertas Rápida */}
@@ -316,6 +365,9 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                 <th scope="col" className="px-3 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   {modoEdicion ? 'Umbral (Editable)' : 'Estado'}
                 </th>
+                {activeTab !== 'insumo' && (
+                  <th scope="col" className="px-3 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Precio</th>
+                )}
                 <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -363,6 +415,11 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                         )
                       )}
                     </td>
+                    {activeTab !== 'insumo' && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-700">
+                        {ing.categoria !== 'insumo' ? `$${(ing.precio || 0).toLocaleString('es-CO')}` : '-'}
+                      </td>
+                    )}
                     <td className="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         <button 
@@ -378,6 +435,13 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                           title="Registrar Merma/Pérdida"
                         >
                           <ArrowDownCircle size={20} />
+                        </button>
+                        <button 
+                          onClick={() => abrirEdicion(ing)}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                          title="Editar información"
+                        >
+                          <Pencil size={18} />
                         </button>
                         <button 
                           onClick={() => iniciarEliminacion(ing)}
@@ -408,17 +472,17 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
 
             <div className="mt-6 text-center">
               <h3 className="text-xl font-bold text-slate-900">
-                {activeTab === 'insumo' ? 'Nuevo Insumo' : 'Nueva Bebida / Producto'}
+                Nuevo Producto
               </h3>
               <p className="text-sm text-slate-500 mt-1">
-                Registra un nuevo {activeTab === 'insumo' ? 'material' : 'producto'} en bodega.
+                Registra un nuevo material o producto en bodega.
               </p>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="mt-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">
-                  Nombre {activeTab === 'insumo' ? 'del Insumo' : 'de la Bebida'}
+                  Nombre
                 </label>
                 <input
                   type="text"
@@ -469,6 +533,38 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                   className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Categoría</label>
+                <select
+                  value={newCategoria}
+                  onChange={(e) => setNewCategoria(e.target.value as any)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-bold text-slate-700"
+                >
+                  <option value="insumo">Insumo de Producción</option>
+                  <option value="bebida">Bebida</option>
+                  <option value="gaseosa">Gaseosa</option>
+                  <option value="cerveza">Cerveza</option>
+                  <option value="cigarrillo">Cigarrillo</option>
+                </select>
+              </div>
+
+              {newCategoria !== 'insumo' && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Precio de Venta</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      required
+                      value={newPrecio}
+                      onChange={(e) => setNewPrecio(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button
@@ -616,6 +712,88 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                 {isPending ? 'Eliminando...' : 'Sí, Eliminar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Modal: Editar Información ═══ */}
+      {isEditOpen && editItem && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+            <div className="mt-2 text-center">
+              <h3 className="text-xl font-bold text-slate-900">Editar Detalles</h3>
+            </div>
+            <form onSubmit={handleEditSubmit} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={editNombre}
+                  onChange={(e) => setEditNombre(e.target.value)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Unidad de Medida</label>
+                <input
+                  type="text"
+                  required
+                  value={editUnidad}
+                  onChange={(e) => setEditUnidad(e.target.value)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all uppercase"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Categoría</label>
+                <select
+                  value={editCategoria}
+                  onChange={(e) => setEditCategoria(e.target.value as any)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                >
+                  <option value="insumo">Insumo de Producción</option>
+                  <option value="bebida">Bebida</option>
+                  <option value="gaseosa">Gaseosa</option>
+                  <option value="cerveza">Cerveza</option>
+                  <option value="cigarrillo">Cigarrillo</option>
+                </select>
+              </div>
+
+              {editCategoria !== 'insumo' && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Precio de Venta</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      required
+                      value={editPrecio}
+                      onChange={(e) => setEditPrecio(e.target.value)}
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 py-3 px-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  disabled={isPending}
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="flex-1 px-4 py-3 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 bg-blue-600 shadow-blue-600/20 hover:bg-blue-700"
+                >
+                  {isPending ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
