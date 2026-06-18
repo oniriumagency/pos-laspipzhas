@@ -40,9 +40,13 @@ export function CartSidebar() {
   const [isPending, startTransition] = useTransition();
 
   const itemCount = cart.reduce((count, item) => count + item.cantidad, 0);
-  const subtotal = cart.reduce((total, item) => total + (item.precio_unitario * item.cantidad), 0);
+  const subtotal = cart.reduce((total, item) => {
+    const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+    return total + ((item.precio_unitario + modifiersTotal) * item.cantidad);
+  }, 0);
   const descuentoAmount = cart.reduce((totalDesc, item) => {
-    const base = item.precio_unitario * item.cantidad;
+    const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+    const base = (item.precio_unitario + modifiersTotal) * item.cantidad;
     return totalDesc + (base * ((item.descuento_porcentaje || 0) / 100));
   }, 0);
   const total = subtotal - descuentoAmount;
@@ -154,23 +158,34 @@ export function CartSidebar() {
                       )}
                       {/* ── PRODUCTO ── */}
                       {item.tipo === 'producto' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          {item.producto_imagen && (
-                            <div className="relative w-8 h-8 flex-shrink-0 bg-slate-50/50 rounded-lg p-1">
-                              <Image 
-                                src={item.producto_imagen} 
-                                alt={item.producto_nombre || 'Producto'} 
-                                fill 
-                                className="object-contain"
-                              />
+                        <div className="flex flex-col mb-1">
+                          <div className="flex items-center gap-2">
+                            {item.producto_imagen && (
+                              <div className="relative w-8 h-8 flex-shrink-0 bg-slate-50/50 rounded-lg p-1">
+                                <Image 
+                                  src={item.producto_imagen} 
+                                  alt={item.producto_nombre || 'Producto'} 
+                                  fill 
+                                  className="object-contain"
+                                />
+                              </div>
+                            )}
+                            <h4 className="font-bold text-slate-800">{item.producto_nombre}</h4>
+                          </div>
+                          {(item.modifiers?.length ?? 0) > 0 && (
+                            <div className={`mt-1.5 flex flex-wrap gap-1 ${item.producto_imagen ? 'pl-10' : 'pl-0'}`}>
+                              {item.modifiers!.map(m => (
+                                <span key={m.id} className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[10px] font-bold border border-amber-200 shadow-sm flex items-center">
+                                  ↳ {m.name} (+${m.price.toLocaleString('es-CO')})
+                                </span>
+                              ))}
                             </div>
                           )}
-                          <h4 className="font-bold text-slate-800">{item.producto_nombre}</h4>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
                         <span className="text-orange-500 font-bold text-sm">
-                          ${item.precio_unitario.toLocaleString()} c/u
+                          ${(item.precio_unitario + (item.modifiers?.reduce((a, m) => a + m.price, 0) || 0)).toLocaleString()} c/u
                         </span>
                         {(item.descuento_porcentaje ?? 0) > 0 && (
                           <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
@@ -241,7 +256,7 @@ export function CartSidebar() {
                       </button>
                     </div>
                     <span className="font-black text-slate-800 text-base">
-                      ${Math.round(item.precio_unitario * item.cantidad * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString()}
+                      ${Math.round((item.precio_unitario + (item.modifiers?.reduce((a, m) => a + m.price, 0) || 0)) * item.cantidad * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString()}
                     </span>
                   </div>
                 </div>

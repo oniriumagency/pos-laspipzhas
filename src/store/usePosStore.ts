@@ -22,6 +22,12 @@ export type OrigenVenta = 'Propio' | 'Rappi' | 'DiDi';
 // Discriminador de tipo de item en el carrito
 export type TipoItemCarrito = 'pizza' | 'producto';
 
+export interface Modifier {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export type CartItem = {
   id: string;
   tipo: TipoItemCarrito;
@@ -41,6 +47,7 @@ export type CartItem = {
   producto_id?: string;
   producto_nombre?: string;
   producto_imagen?: string | null;
+  modifiers?: Modifier[];
 };
 
 export type Cuenta = {
@@ -229,13 +236,17 @@ export const usePosStore = create<PosState>()(
 
           // 1. Intentar agrupar si es un producto simple idéntico
           if (item.tipo === 'producto') {
-            const index = c.cart.findIndex(
-              (i) =>
-                i.tipo === 'producto' &&
-                i.producto_id === item.producto_id &&
-                i.descuento_porcentaje === item.descuento_porcentaje &&
-                i.precio_unitario === item.precio_unitario
-            );
+            const index = c.cart.findIndex((i) => {
+              if (i.tipo !== 'producto') return false;
+              if (i.producto_id !== item.producto_id) return false;
+              if (i.descuento_porcentaje !== item.descuento_porcentaje) return false;
+              if (i.precio_unitario !== item.precio_unitario) return false;
+              
+              const idsModifiersI = (i.modifiers || []).map(m => m.id).sort().join(',');
+              const idsModifiersItem = (item.modifiers || []).map(m => m.id).sort().join(',');
+              
+              return idsModifiersI === idsModifiersItem;
+            });
             
             if (index !== -1) {
               const newCart = [...c.cart];
@@ -364,7 +375,8 @@ export const usePosStore = create<PosState>()(
     const cuenta = get().getCuentaActiva();
     if (!cuenta) return 0;
     return cuenta.cart.reduce((total, item) => {
-      const baseTotal = item.precio_unitario * item.cantidad;
+      const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+      const baseTotal = (item.precio_unitario + modifiersTotal) * item.cantidad;
       return total + baseTotal;
     }, 0);
   },
@@ -374,7 +386,8 @@ export const usePosStore = create<PosState>()(
     if (!cuenta) return 0;
     return cuenta.cart.reduce((totalDesc, item) => {
       const itemDiscount = item.descuento_porcentaje || 0;
-      const baseTotal = item.precio_unitario * item.cantidad;
+      const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+      const baseTotal = (item.precio_unitario + modifiersTotal) * item.cantidad;
       return totalDesc + baseTotal * (itemDiscount / 100);
     }, 0);
   },

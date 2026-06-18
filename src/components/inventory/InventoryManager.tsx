@@ -153,7 +153,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     setEditNombre(ing.nombre);
     setEditUnidad(ing.unidad_medida);
     setEditPrecio((ing.precio || 0).toString());
-    setEditCategoria((ing.categoria as any) || 'bebida');
+    setEditCategoria((ing.categoria as any) || 'insumo');
     setIsEditOpen(true);
   };
 
@@ -167,7 +167,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
         stock_actual: editItem.stock_actual,
         unidad_medida: editUnidad.trim(),
         punto_reorden: editItem.punto_reorden,
-        categoria: editItem.categoria === 'insumo' ? 'insumo' : editCategoria,
+        categoria: editCategoria,
         precio: Number(editPrecio) || 0
       });
 
@@ -265,7 +265,11 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
     });
   };
 
-  const ingredientesFiltrados = ingredientes.filter(i => activeTab === 'todo' || (i.categoria || 'insumo') === activeTab);
+  const ingredientesFiltrados = ingredientes.filter(i => {
+    if (activeTab === 'todo') return true;
+    const cat = i.categoria ? String(i.categoria).trim().toLowerCase() : 'insumo';
+    return cat === activeTab;
+  });
 
   return (
     <div className="mt-8 relative">

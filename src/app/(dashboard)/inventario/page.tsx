@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { InventoryManager } from '@/components/inventory/InventoryManager'; // Importación local del componente cliente
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Este React Server Component se delega exclusivamente la recolección inicial de los
 // datos de inventario del lado del servidor (Velocidad, zero latency en hidratación) y pasa la 
 // batuta al Client Component <InventoryManager /> para que maneje el Modal y la Tabla Reactiva.
@@ -11,7 +14,7 @@ export default async function InventarioPage() {
   // Solo se muestran ingredientes con activo = true (Soft Delete)
   const { data: ingredientes, error } = await supabase
     .from('ingredientes')
-    .select('id, nombre, stock_actual, unidad_medida, punto_reorden, categoria')
+    .select('id, nombre, stock_actual, unidad_medida, punto_reorden, categoria, precio')
     .eq('activo', true)
     .order('nombre', { ascending: true });
 

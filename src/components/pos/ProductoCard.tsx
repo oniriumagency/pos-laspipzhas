@@ -6,6 +6,7 @@ import { usePosStore } from '@/store/usePosStore';
 import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape, Pizza, Flame } from 'lucide-react';
 import { toast } from 'sonner';
 import { CategoriaProducto } from '@/server/actions/productos';
+import './ProductoCard.css';
 
 interface ProductoCardProps {
   producto: {
@@ -78,11 +79,13 @@ export function ProductoCard({ producto }: ProductoCardProps) {
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
   const [descuentoPersonalizado, setDescuentoPersonalizado] = useState('');
   const [mostrarInputPersonalizado, setMostrarInputPersonalizado] = useState(false);
+  const [isMichelada, setIsMichelada] = useState(false);
 
   const estilos = ESTILOS_CATEGORIA[producto.categoria];
   const Icono = estilos.icono;
 
-  const precioConDescuento = Math.round(producto.precio * (1 - descuentoPorcentaje / 100));
+  const precioMichelada = isMichelada ? 3000 : 0;
+  const precioConDescuento = Math.round((producto.precio + precioMichelada) * (1 - descuentoPorcentaje / 100));
   const totalLinea = precioConDescuento * cantidad;
 
   const handleDescuentoPildora = (porcentaje: number) => {
@@ -102,6 +105,8 @@ export function ProductoCard({ producto }: ProductoCardProps) {
   };
 
   const handleAgregarAlCarrito = () => {
+    const modifiers = isMichelada ? [{ id: 'michelada', name: 'Michelada', price: 3000 }] : [];
+    
     addToCart({
       tipo: 'producto',
       producto_id: producto.id,
@@ -110,6 +115,7 @@ export function ProductoCard({ producto }: ProductoCardProps) {
       precio_unitario: producto.precio,
       descuento_porcentaje: descuentoPorcentaje,
       cantidad,
+      modifiers,
       // Campos de pizza en undefined (no aplica)
       tamano_id: undefined,
       tamano_nombre: undefined,
@@ -124,6 +130,7 @@ export function ProductoCard({ producto }: ProductoCardProps) {
     setDescuentoPorcentaje(0);
     setDescuentoPersonalizado('');
     setMostrarInputPersonalizado(false);
+    setIsMichelada(false);
   };
 
   return (
@@ -236,7 +243,7 @@ export function ProductoCard({ producto }: ProductoCardProps) {
         <div className="text-right">
           {descuentoPorcentaje > 0 && (
             <p className="text-[10px] text-slate-400 line-through font-semibold">
-              ${(producto.precio * cantidad).toLocaleString('es-CO')}
+              ${((producto.precio + precioMichelada) * cantidad).toLocaleString('es-CO')}
             </p>
           )}
           <p className="font-black text-slate-800 text-base">
@@ -244,6 +251,28 @@ export function ProductoCard({ producto }: ProductoCardProps) {
           </p>
         </div>
       </div>
+
+      {producto.categoria === 'cerveza' && (
+        <div 
+          className={`modifier-container relative z-10 cursor-pointer ${isMichelada ? 'active' : ''}`}
+          onClick={() => setIsMichelada(!isMichelada)}
+        >
+          <div className="modifier-label">
+            <span className="modifier-title">Michelada</span>
+            <span className="modifier-price">+$3.000</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isMichelada}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMichelada(!isMichelada);
+            }}
+            className={`modifier-toggle ${isMichelada ? 'active' : ''}`}
+          />
+        </div>
+      )}
 
       {/* Botón agregar al carrito */}
       <button

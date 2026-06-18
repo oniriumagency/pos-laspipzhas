@@ -71,9 +71,13 @@ export function DashboardCuentas() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {cuentas.map((cuenta) => {
             const totalItems = cuenta.cart.reduce((acc, item) => acc + item.cantidad, 0);
-            const subtotal = cuenta.cart.reduce((total, item) => total + (item.precio_unitario * item.cantidad), 0);
+            const subtotal = cuenta.cart.reduce((total, item) => {
+              const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+              return total + ((item.precio_unitario + modifiersTotal) * item.cantidad);
+            }, 0);
             const totalDesc = cuenta.cart.reduce((totDesc, item) => {
-              const base = item.precio_unitario * item.cantidad;
+              const modifiersTotal = (item.modifiers || []).reduce((acc, mod) => acc + mod.price, 0);
+              const base = (item.precio_unitario + modifiersTotal) * item.cantidad;
               return totDesc + (base * ((item.descuento_porcentaje || 0) / 100));
             }, 0);
             const total = subtotal - totalDesc;
@@ -128,14 +132,25 @@ export function DashboardCuentas() {
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Detalle de la Orden</p>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {cuenta.cart.map(item => (
-                          <div key={item.id} className="flex justify-between text-sm items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <span className="font-medium text-slate-700 truncate mr-2">
-                              <span className="font-bold text-orange-600 mr-1">{item.cantidad}x</span> 
-                              {item.tipo === 'pizza' ? item.tamano_nombre || 'Pizza' : item.producto_nombre}
-                            </span>
-                            <span className="font-bold text-slate-900 shrink-0">
-                              ${((item.precio_unitario * item.cantidad) * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString('es-CO')}
-                            </span>
+                          <div key={item.id} className="flex flex-col bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <div className="flex justify-between text-sm items-center">
+                              <span className="font-medium text-slate-700 truncate mr-2">
+                                <span className="font-bold text-orange-600 mr-1">{item.cantidad}x</span> 
+                                {item.tipo === 'pizza' ? item.tamano_nombre || 'Pizza' : item.producto_nombre}
+                              </span>
+                              <span className="font-bold text-slate-900 shrink-0">
+                                ${(((item.precio_unitario + (item.modifiers?.reduce((a, m) => a + m.price, 0) || 0)) * item.cantidad) * (1 - (item.descuento_porcentaje || 0) / 100)).toLocaleString('es-CO')}
+                              </span>
+                            </div>
+                            {(item.modifiers?.length ?? 0) > 0 && (
+                              <div className="pl-5 mt-1 flex flex-wrap gap-1">
+                                {item.modifiers!.map(m => (
+                                  <span key={m.id} className="text-[9px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">
+                                    + {m.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
