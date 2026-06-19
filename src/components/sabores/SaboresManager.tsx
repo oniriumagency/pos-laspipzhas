@@ -166,7 +166,7 @@ export default function SaboresManager({ sabores, relaciones, ingredientes }: Sa
             return (
               <div
                 key={sabor.id}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden"
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col"
               >
                 {/* Cabecera de Tarjeta */}
                 <div className="px-5 pt-5 pb-3 flex items-start justify-between">

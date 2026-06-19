@@ -274,7 +274,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
   return (
     <div className="mt-8 relative">
       {/* ═══ Barra Superior de Acciones ═══ */}
-      <div className="flex flex-wrap justify-between items-center mb-6 gap-3 absolute -top-20 right-0 left-0 sm:-top-24">
+      <div className="flex flex-wrap justify-end items-center mb-6 gap-3">
         <div className="flex gap-2">
           {!modoEdicion ? (
             <button
@@ -585,7 +585,7 @@ export function InventoryManager({ ingredientes }: { ingredientes: Ingrediente[]
                   disabled={isPending}
                   className="flex-1 px-4 py-3 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 bg-slate-900 shadow-slate-900/20 hover:bg-black"
                 >
-                  {isPending ? 'Guardando...' : (activeTab === 'insumo' ? 'Crear Insumo' : 'Crear Bebida')}
+                  {isPending ? 'Guardando...' : (activeTab === 'insumo' ? 'Crear Insumo' : 'Crear item')}
                 </button>
               </div>
             </form>
