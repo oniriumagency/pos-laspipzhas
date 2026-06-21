@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
-import { Store, Bike, UtensilsCrossed, Calendar, TrendingUp, Receipt, Tag, Trophy, Filter, Download } from 'lucide-react';
+import { Store, Bike, UtensilsCrossed, Calendar, TrendingUp, Receipt, Tag, Trophy, Filter, Download, Activity } from 'lucide-react';
 
 interface Venta {
   id: string;
@@ -103,6 +103,39 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
     });
     return descuentometro;
   }, [ventasFiltradas]);
+
+  const diasEnRango = useMemo(() => {
+    const ahora = new Date();
+    
+    if (rangoFecha === 'hoy' || rangoFecha === 'ayer') {
+      return 1;
+    } else if (rangoFecha === 'esta_semana') {
+      const diaSemana = ahora.getDay() === 0 ? 7 : ahora.getDay();
+      return diaSemana || 1;
+    } else if (rangoFecha === 'este_mes') {
+      return ahora.getDate() || 1;
+    } else if (rangoFecha === 'todo') {
+      if (ventasFiltradas.length === 0) return 1;
+      const fechas = ventasFiltradas.map(v => new Date(v.created_at).getTime());
+      const min = Math.min(...fechas);
+      const max = Math.max(...fechas);
+      const diffDays = Math.ceil((max - min) / (1000 * 60 * 60 * 24)) + 1;
+      return diffDays || 1;
+    } else if (rangoFecha === 'custom') {
+      if (fechaInicioManual && fechaFinManual) {
+        const [anioI, mesI, diaI] = fechaInicioManual.split('-').map(Number);
+        const inicio = new Date(anioI, mesI - 1, diaI).getTime();
+        const [anioF, mesF, diaF] = fechaFinManual.split('-').map(Number);
+        const fin = new Date(anioF, mesF - 1, diaF).getTime();
+        const diffDays = Math.ceil(Math.abs(fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+        return diffDays || 1;
+      }
+      return 1;
+    }
+    return 1;
+  }, [rangoFecha, fechaInicioManual, fechaFinManual, ventasFiltradas]);
+
+  const ingresoPromedioDiario = diasEnRango > 0 ? totalIngresos / diasEnRango : 0;
 
   // Gráfico 1: Share de Canales (Doughnut)
   const dataRecuentoOrigen = useMemo(() => {
@@ -331,7 +364,7 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
       </div>
 
       {/* ── KPIs Tarjetas ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 shadow-sm flex flex-col gap-1.5 relative overflow-hidden group">
           <div className="absolute right-[-10px] top-[-10px] bg-green-50 w-20 h-20 rounded-full transition-transform group-hover:scale-110 -z-0"></div>
           <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-1 z-10">
@@ -366,6 +399,15 @@ export default function ReportesDashboard({ ventas }: ReportesDashboardProps) {
           </div>
           <p className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest z-10 mt-1">Total en Descuentos</p>
           <h3 className="text-3xl font-black text-gray-900 z-10">${totalDescuentos.toLocaleString('es-ES')}</h3>
+        </div>
+
+        <div className="bg-white rounded-[1.5rem] p-5 border border-gray-100 shadow-sm flex flex-col gap-1.5 relative overflow-hidden group">
+          <div className="absolute right-[-10px] top-[-10px] bg-teal-50 w-20 h-20 rounded-full transition-transform group-hover:scale-110 -z-0"></div>
+          <div className="w-10 h-10 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-1 z-10">
+            <Activity size={20} strokeWidth={2.5} />
+          </div>
+          <p className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest z-10 mt-1">Promedio Diario</p>
+          <h3 className="text-3xl font-black text-gray-900 z-10">${Math.round(ingresoPromedioDiario).toLocaleString('es-ES')}</h3>
         </div>
       </div>
 

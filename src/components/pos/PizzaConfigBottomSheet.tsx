@@ -51,7 +51,7 @@ export function PizzaConfigBottomSheet({ isOpen, onClose, tamano, disponiblesTop
 
     const isPersonal = t.includes('personal');
 
-    if (s.includes('trifásica') || s.includes('trifasica')) {
+    if (s.includes('trifásica') || s.includes('trifasica') || s.includes('colombiana')) {
       return isPersonal ? 32000 : 42000;
     }
     if (s.includes('polloroni')) {
