@@ -11,7 +11,7 @@ import {
 } from '@/server/actions/productos';
 import {
   PlusCircle, Pencil, Trash2, RotateCcw, X, Save,
-  Beer, Grape, Droplets, Package, Pizza, Flame,
+  Beer, Grape, Droplets, Package, Pizza, Flame, Wine
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,6 +23,7 @@ const CATEGORIAS: { valor: CategoriaProducto; etiqueta: string; icono: React.Ele
   { valor: 'cerveza',    etiqueta: 'Cerveza',    icono: Beer,     color: 'text-amber-500 bg-amber-50'   },
   { valor: 'bebida',     etiqueta: 'Bebida',     icono: Droplets, color: 'text-cyan-500 bg-cyan-50'     },
   { valor: 'cigarrillo', etiqueta: 'Cigarrillos', icono: Flame,    color: 'text-slate-600 bg-slate-100'  },
+  { valor: 'licor',      etiqueta: 'Licores',    icono: Wine,     color: 'text-rose-500 bg-rose-50'     },
 ];
 
 const obtenerEstiloCategoria = (categoria: CategoriaProducto) =>
@@ -459,7 +460,7 @@ function FormularioProducto({ form, onChange, isPending }: FormularioProductoPro
         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
           Categoría
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
           {CATEGORIAS.map((cat) => {
             const Icono = cat.icono;
             const estaActiva = form.categoria === cat.valor;

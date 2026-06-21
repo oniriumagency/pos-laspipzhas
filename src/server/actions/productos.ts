@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 // Categorías válidas para la tabla productos
-export type CategoriaProducto = 'gaseosa' | 'cerveza' | 'bebida' | 'pizza' | 'cigarrillo';
+export type CategoriaProducto = 'gaseosa' | 'cerveza' | 'bebida' | 'pizza' | 'cigarrillo' | 'licor';
 
 export type Producto = {
   id: string;

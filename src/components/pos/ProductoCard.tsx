@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { usePosStore } from '@/store/usePosStore';
-import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape, Pizza, Flame } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Beer, Droplets, Grape, Pizza, Flame, Wine } from 'lucide-react';
 import { toast } from 'sonner';
 import { CategoriaProducto } from '@/server/actions/productos';
 import './ProductoCard.css';
@@ -66,6 +66,14 @@ const ESTILOS_CATEGORIA: Record<CategoriaProducto, {
     colorBorde: 'border-slate-200',
     colorBadge: 'bg-slate-200 text-slate-800',
     etiqueta: 'Cigarrillo',
+  },
+  licor: {
+    icono: Wine,
+    colorIcono: 'text-rose-500',
+    colorFondo: 'bg-rose-50',
+    colorBorde: 'border-rose-100',
+    colorBadge: 'bg-rose-100 text-rose-600',
+    etiqueta: 'Licor',
   },
 };
 

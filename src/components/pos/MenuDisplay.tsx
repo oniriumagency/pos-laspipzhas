@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { PizzaConfigBottomSheet } from './PizzaConfigBottomSheet';
 import { ProductoCard } from './ProductoCard';
 import { Topping, Sabor } from '@/store/usePosStore';
-import { Pizza, ChevronRight, Beer, Grape, Droplets, Flame } from 'lucide-react';
+import { Pizza, ChevronRight, Beer, Grape, Droplets, Flame, Wine } from 'lucide-react';
 import { CategoriaProducto } from '@/server/actions/productos';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ interface MenuDisplayProps {
 
 // ─── Configuración de Tabs ────────────────────────────────────────────────────
 
-type TabId = 'pizzas' | 'gaseosas' | 'cervezas' | 'bebidas' | 'cigarrillos';
+type TabId = 'pizzas' | 'gaseosas' | 'cervezas' | 'bebidas' | 'cigarrillos' | 'licores';
 
 const TABS: { id: TabId; etiqueta: string; icono: React.ElementType }[] = [
   { id: 'pizzas',      etiqueta: 'Pizzas',      icono: Pizza    },
@@ -39,6 +39,7 @@ const TABS: { id: TabId; etiqueta: string; icono: React.ElementType }[] = [
   { id: 'cervezas',    etiqueta: 'Cervezas',    icono: Beer     },
   { id: 'bebidas',     etiqueta: 'Bebidas',     icono: Droplets },
   { id: 'cigarrillos', etiqueta: 'Cigarrillos', icono: Flame    },
+  { id: 'licores',     etiqueta: 'Licores',     icono: Wine     },
 ];
 
 // Mapa de tab a categoría de la tabla productos
@@ -48,6 +49,7 @@ const TAB_A_CATEGORIA: Partial<Record<TabId, CategoriaProducto>> = {
   cervezas:    'cerveza',
   bebidas:     'bebida',
   cigarrillos: 'cigarrillo',
+  licores:     'licor',
 };
 
 // ─── Componente Principal ─────────────────────────────────────────────────────

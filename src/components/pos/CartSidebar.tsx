@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePosStore, OrigenVenta } from '@/store/usePosStore';
 import {
   Trash2, Plus, Minus, ShoppingBag, Receipt, X, AlertCircle, Tag,
-  Store, Bike, UtensilsCrossed, Beer, Grape, Droplets, Pizza, Flame
+  Store, Bike, UtensilsCrossed, Beer, Grape, Droplets, Pizza, Flame, Wine
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processSale } from '@/server/actions/orders';
@@ -143,6 +143,7 @@ export function CartSidebar() {
                   cerveza: Beer,
                   bebida:  Droplets,
                   cigarrillo: Flame,
+                  licor: Wine,
                 };
 
                 return (
