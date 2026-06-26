@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
   Trash2, ChevronDown, ChevronUp, Clock, DollarSign, Pizza,
   Package2, Pencil, X, Plus, Minus, Store, Bike, UtensilsCrossed,
-  Beer,
+  Beer, Printer,
 } from 'lucide-react';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -49,6 +49,14 @@ const ORIGENES_EDICION = [
   { valor: 'DiDi', etiqueta: 'DiDi', icono: UtensilsCrossed, claseActiva: 'bg-orange-500 text-white border-orange-500' },
 ];
 
+const OPCIONES_DOMICILIO = [
+  { nombre: 'Sin Domicilio / Local', valor: 0 },
+  { nombre: '< 200m', valor: 0 },
+  { nombre: '< 1km', valor: 2000 },
+  { nombre: '< 2km', valor: 3000 },
+  { nombre: '< 5km', valor: 4000 },
+];
+
 // ─── Componente Principal ────────────────────────────────────────────────────
 
 export default function VentasList({ ventas, ingredientes, tamanos, sabores }: VentasListProps) {
@@ -59,6 +67,10 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
   // ─── Estado de edición ────────────────────────────────────────────────────
   const [idEditando, setIdEditando] = useState<string | null>(null);
   const [origenEditado, setOrigenEditado] = useState<string>('');
+
+  // ─── Estado del modal "Recibo" ────────────────────────────────────────────
+  const [modalReciboVenta, setModalReciboVenta] = useState<Venta | null>(null);
+  const [tarifaDomicilio, setTarifaDomicilio] = useState<{nombre: string, valor: number}>({nombre: '< 200m', valor: 0});
 
   // ─── Estado del modal "Agregar Items" ─────────────────────────────────────
   const [modalAgregarVentaId, setModalAgregarVentaId] = useState<string | null>(null);
@@ -191,6 +203,149 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
     setCantidadNueva(1);
   };
 
+  const confirmarImprimirRecibo = () => {
+    if (!modalReciboVenta) return;
+    
+    const venta = modalReciboVenta;
+    
+    // Configurar ventana de impresión
+    const ventanaImpresion = window.open('', '_blank', 'width=400,height=600');
+    if (!ventanaImpresion) {
+      toast.error('No se pudo abrir la ventana de impresión. Verifique los bloqueadores de ventanas emergentes.');
+      return;
+    }
+
+    const fecha = new Date(venta.created_at).toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const totalConDomicilio = venta.total_precio + tarifaDomicilio.valor;
+
+    let itemsHtml = '';
+    venta.cart_payload.forEach((item: any) => {
+      const cantidad = item.cantidad || 1;
+      const esProducto = !item.tamano_id && item.producto_nombre;
+      
+      let nombreItem = '';
+      if (esProducto) {
+        nombreItem = item.producto_nombre;
+      } else {
+        const sabor1 = item.sabor_1_nombre;
+        const sabor2 = item.sabor_2_nombre;
+        let etiquetaSabor = sabor1 || 'Pizza';
+        if (sabor1 && sabor2) etiquetaSabor = `${sabor1.split(' ')[0]}/${sabor2.split(' ')[0]}`;
+        const tamanoLimpio = item.tamano_nombre ? item.tamano_nombre.replace(/\s*\d+cm/gi, '').trim() : '';
+        nombreItem = `${tamanoLimpio} ${etiquetaSabor}`.trim();
+      }
+
+      const precioUnitario = item.precio_unitario || 0;
+      let totalItem = precioUnitario * cantidad;
+      if (item.descuento_porcentaje) {
+         totalItem = totalItem * (1 - item.descuento_porcentaje / 100);
+      }
+
+      itemsHtml += `
+        <tr>
+          <td style="padding: 4px 0; vertical-align: top;">${cantidad}x</td>
+          <td style="padding: 4px 0;">${nombreItem}</td>
+          <td style="text-align: right; padding: 4px 0; vertical-align: top;">$${totalItem.toLocaleString('es-ES')}</td>
+        </tr>
+      `;
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Recibo - Las Pipzhas</title>
+        <style>
+          @page { margin: 0; }
+          body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            width: 300px;
+            margin: 0 auto;
+            padding: 10px;
+            color: #000;
+          }
+          .header { text-align: center; margin-bottom: 15px; }
+          .logo { width: 120px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+          .title { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; }
+          .subtitle { font-size: 12px; margin: 0; color: #333; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          th { text-align: left; border-bottom: 1px dashed #000; padding-bottom: 4px; }
+          .totals { margin-top: 10px; }
+          .totals-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+          .totals-row.grand-total { font-size: 14px; font-weight: bold; margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/logo-pipzhas.png" alt="Las Pipzhas Logo" class="logo" onerror="this.style.display='none'" />
+          <h1 class="title">LAS PIPZHAS S.A.S.</h1>
+          <p class="subtitle">NIT: 902029599</p>
+          <p class="subtitle">¡El mejor sabor!</p>
+          <p class="subtitle">${fecha}</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%;">Cant</th>
+              <th style="width: 55%;">Descripción</th>
+              <th style="width: 30%; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="divider"></div>
+
+        <div class="totals">
+          <div class="totals-row">
+            <span>Subtotal:</span>
+            <span>$${venta.total_precio.toLocaleString('es-ES')}</span>
+          </div>
+          ${tarifaDomicilio.valor > 0 ? `
+          <div class="totals-row">
+            <span>Domicilio:</span>
+            <span>$${tarifaDomicilio.valor.toLocaleString('es-ES')}</span>
+          </div>
+          ` : ''}
+          <div class="totals-row grand-total">
+            <span>TOTAL A PAGAR:</span>
+            <span>$${totalConDomicilio.toLocaleString('es-ES')}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>¡Gracias por tu compra!</p>
+          <p>Vuelve pronto</p>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    ventanaImpresion.document.open();
+    ventanaImpresion.document.write(html);
+    ventanaImpresion.document.close();
+    setModalReciboVenta(null);
+  };
+
   const confirmarAgregarItem = () => {
     if (!tamanoSeleccionado || !saborSeleccionado || !modalAgregarVentaId) {
       toast.error('Selecciona un tamaño y un sabor.');
@@ -314,6 +469,20 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0">
+                {/* Botón Imprimir Recibo */}
+                <button
+                  onClick={() => {
+                    setModalReciboVenta(venta);
+                    setTarifaDomicilio({ nombre: 'Sin Domicilio / Local', valor: 0 });
+                  }}
+                  disabled={isPending}
+                  className="w-10 h-10 flex items-center justify-center border border-emerald-200 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:border-emerald-600 hover:text-white transition-all disabled:opacity-50 shadow-sm"
+                  aria-label="Generar Recibo"
+                  title="Generar Recibo"
+                >
+                  <Printer className="w-[1.1rem] h-[1.1rem] shrink-0" />
+                </button>
+
                 {/* Botón Editar */}
                 <button
                   onClick={() => iniciarEdicion(venta)}
@@ -630,6 +799,58 @@ export default function VentasList({ ventas, ingredientes, tamanos, sabores }: V
                 className="flex-1 px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
               >
                 {isPending ? '⏳ Procesando...' : 'Confirmar y Descontar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL: Generar Recibo ═══ */}
+      {modalReciboVenta && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[70]" style={{ animation: 'fadeIn 150ms ease-out' }}>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
+            
+            {/* Header del modal */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Generar Recibo</h3>
+                <p className="text-sm text-slate-500 mt-1">Selecciona la tarifa de domicilio aplicable.</p>
+              </div>
+              <button onClick={() => setModalReciboVenta(null)} className="p-2 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Selector de Tarifa */}
+            <div className="mb-6 space-y-2">
+              {OPCIONES_DOMICILIO.map((opcion) => (
+                <button
+                  key={opcion.nombre}
+                  onClick={() => setTarifaDomicilio(opcion)}
+                  className={`w-full p-3 rounded-xl border-2 text-sm font-bold transition-all flex justify-between items-center ${tarifaDomicilio.nombre === opcion.nombre
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                >
+                  <span>{opcion.nombre}</span>
+                  <span>${opcion.valor.toLocaleString('es-ES')}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setModalReciboVenta(null)}
+                className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarImprimirRecibo}
+                className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-emerald-500/20 flex justify-center items-center gap-2"
+              >
+                <Printer size={18} /> Imprimir
               </button>
             </div>
           </div>
